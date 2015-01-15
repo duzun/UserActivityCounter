@@ -98,7 +98,7 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   TrayIcon := TTrayIcon.Create(Self);
-  TrayIcon.Hint := 'test';
+  TrayIcon.Hint := Caption;
   TrayIcon.OnMouseDown := TrayMouseDown;
 
    IdleTimeout   := 5*60*1000; // 5 min.
