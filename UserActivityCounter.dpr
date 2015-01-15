@@ -9,10 +9,7 @@ uses
 
 begin
   Application.Initialize;
+//  Application.ShowMainForm := False;
   Application.CreateForm(TForm1, Form1);
-  with Form1 do begin
-     Left := (Screen.Width -Width ) shr 1;
-     Top  := (Screen.Height-Height) shr 2;
-  end;
   Application.Run;
 end.

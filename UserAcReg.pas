@@ -22,6 +22,7 @@ var liInfo: TLastInputInfo;
 
 function LastInputStateChanged(WasIdle: boolean; LastTick: DWord; IdleTimeout: DWord): boolean;
 begin
+// li	to	lti	li	lta	[li]	to	lti ...
    if IdleTimeout < 10 then IdleTimeout := UAInactiveTimeout;
    Result := (not WasIdle) and (GetIdleCount >= IdleTimeout) or
                   WasIdle  and (GetLastInputTick > LastTick);
