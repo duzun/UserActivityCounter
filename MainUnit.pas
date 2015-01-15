@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls,
-  UserAcReg, StdCtrls, ActnList, Graph, ComCtrls, ShellApi;
+  UserAcReg, StdCtrls, ActnList, Graph, ComCtrls, ShellApi, TrayIcon;
 
 const WM_ICONTRAY = WM_USER + 1;
 
@@ -33,6 +33,8 @@ type
     BSetI: TButton;
     OnStateChange: TAction;
     SetIdle: TAction;
+    HideToTray: TAction;
+    ShowFromTray: TAction;
     procedure Timer1Timer(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
@@ -42,17 +44,17 @@ type
     procedure OnStateChangeExecute(Sender: TObject);
     procedure SetIdleExecute(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure FormDestroy(Sender: TObject);
-    procedure FormDblClick(Sender: TObject);
-    procedure FormHide(Sender: TObject);
-    procedure FormShow(Sender: TObject);
+    procedure HideToTrayExecute(Sender: TObject);
+    procedure ShowFromTrayExecute(Sender: TObject);
+    procedure TrayMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   protected
     procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
   private
     { Private declarations }
-    TrayIconData: TNotifyIconData;
-        
+    TrayIcon: TTrayIcon;
+
     FormCaptStr: String;
     tk: DWord;   // TickCount
     litk: DWord; // LastInputTickCount
@@ -95,17 +97,10 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  with TrayIconData do
-  begin
-    cbSize := SizeOf(TrayIconData);
-    Wnd := Handle;
-    uID := 0;
-    uFlags := NIF_MESSAGE + NIF_ICON + NIF_TIP;
-    uCallbackMessage := WM_ICONTRAY;
-    hIcon := Application.Icon.Handle;
-    StrPCopy(szTip, Self.Caption);
-  end;
-  
+  TrayIcon := TTrayIcon.Create(Self);
+  TrayIcon.Hint := 'test';
+  TrayIcon.OnMouseDown := TrayMouseDown;
+
    IdleTimeout   := 5*60*1000; // 5 min.
    FormCaptStr   := Caption + ': ';
    _Idle := false;
@@ -138,7 +133,7 @@ begin
    schg := LastInputStateChanged(LastState, lt, UAInactiveTimeout);
    if schg then OnStateChangeExecute(Sender);
 
-   if LastInputStateChanged(LastState_, lt_, IdleTimeout) then
+   if not _Idle and LastInputStateChanged(LastState_, lt_, IdleTimeout) then
      OnStateChange_Execute(Sender);
 
    if schg or not LastState or ((tk shr 5) and 2 = 0) then
@@ -220,6 +215,9 @@ end;
 
 procedure TForm1.SetIdleExecute(Sender: TObject);
 begin
+  OnStateChangeExecute(Sender);
+  OnStateChange_Execute(Sender);
+
    _Idle := not _Idle;
    if _Idle then begin
       BSetI.Caption := 'Set Active';
@@ -230,11 +228,6 @@ begin
    end;
 end;
 
-
-procedure TForm1.FormDestroy(Sender: TObject);
-begin
-   Shell_NotifyIcon(NIM_DELETE, @TrayIconData);
-end;
 
 procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
 var fn: string;
@@ -254,7 +247,6 @@ begin
   buf := '~ ' + DateTimeToStr(StartDate) + ln +
          'Idle time  : ' + MSec2StrTime(InactiveTime_ ) + ln +
          'Active time: ' + MSec2StrTime(ActiveTime_ ) + ln +
-         'Real Idle  : ' + MSec2StrTime(InactiveTime ) + ln +
          'Real Active: ' + MSec2StrTime(ActiveTime ) + ln +
          'Total:       ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
          '~ ' + DateTimeToStr(Now) + ln +
@@ -271,18 +263,18 @@ begin
   case Msg.lParam of
     WM_LBUTTONDOWN:
     begin
-      Self.Show;
+      ShowFromTrayExecute(Self);
     end;
     WM_RBUTTONDOWN:
     begin
-      Self.Hide;
+      HideToTrayExecute(Self);
     end;
+    WM_MOUSEMOVE:
+    begin
+      Self.BringToFront;
+    end;
+    else StatusBar1.Panels[2].Text := IntToStr(Msg.lParam) + ':' + IntToStr(Msg.WParam);
   end;
-end;
-
-procedure TForm1.FormDblClick(Sender: TObject);
-begin
-   Self.Hide;
 end;
 
 procedure TForm1.WMSize(var Msg: TWMSize);
@@ -290,14 +282,35 @@ begin
 
 end;
 
-procedure TForm1.FormHide(Sender: TObject);
+procedure TForm1.HideToTrayExecute(Sender: TObject);
 begin
-  Shell_NotifyIcon(NIM_ADD, @TrayIconData);
+   Hide;
 end;
 
-procedure TForm1.FormShow(Sender: TObject);
+procedure TForm1.ShowFromTrayExecute(Sender: TObject);
 begin
-  Shell_NotifyIcon(NIM_DELETE, @TrayIconData);
+   Application.Restore;
+   Show;
+   WindowState := wsNormal;   
+end;
+
+procedure TForm1.TrayMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  case Button of
+    mbLeft:
+    begin
+      ShowFromTrayExecute(Self);
+    end;
+    mbRight:
+    begin
+      HideToTrayExecute(Self);
+    end;
+    mbMiddle:
+    begin
+      Self.BringToFront;
+    end;
+  end;
 end;
 
 end.

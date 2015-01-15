@@ -105,11 +105,8 @@ object Form1: TForm1
   Scaled = False
   OnClose = FormClose
   OnCreate = FormCreate
-  OnDblClick = FormDblClick
-  OnDestroy = FormDestroy
-  OnHide = FormHide
+  OnDblClick = HideToTrayExecute
   OnKeyPress = FormKeyPress
-  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object LAt: TLabel
@@ -258,6 +255,9 @@ object Form1: TForm1
         Width = 50
       end
       item
+        Width = 100
+      end
+      item
         Width = 50
       end>
   end
@@ -291,6 +291,14 @@ object Form1: TForm1
     object SetIdle: TAction
       Caption = 'Set Idle'
       OnExecute = SetIdleExecute
+    end
+    object HideToTray: TAction
+      Caption = 'HideToTray'
+      OnExecute = HideToTrayExecute
+    end
+    object ShowFromTray: TAction
+      Caption = 'ShowFromTray'
+      OnExecute = ShowFromTrayExecute
     end
   end
 end
