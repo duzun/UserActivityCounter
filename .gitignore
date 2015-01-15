@@ -1,0 +1,11 @@
+*.ex~
+*.~???
+*.tmp
+*.tds
+*.qst
+*.fpd
+*.sym
+*.ilc
+*.ild
+*.tds
+*.ppu

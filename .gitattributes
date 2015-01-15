@@ -1,0 +1,21 @@
+# Enforce LF line endings (notepad++ can handle it)
+* text eol=crlf
+
+# Text file extensions
+*.pas  text  eol=crlf
+*.cfg  text  eol=crlf
+*.dfm  text  eol=crlf
+*.dpr  text  eol=crlf
+*.bat  text  eol=crlf
+
+
+# Binary file extensions
+*.png binary
+*.ico binary
+*.dcu binary
+*.ddp binary
+*.res binary
+*.rar binary
+*.zip binary
+*.gz binary
+
