@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls,
+  Dialogs, ExtCtrls, Registry,
   UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon;
 
 const WM_ICONTRAY = WM_USER + 1;
@@ -272,20 +272,19 @@ begin
     LAt_.Caption   := MSec2StrTime(UAC.PresentTime);
     Label4.Caption := IntToStr(UAC.TotalTime);
 
-   i := tk - lt;
-   if LastState then statestr := 'Idle' else statestr := 'Active';
-   Caption := Format(statestr + ': %0.3f :: ' + FormCaptStr, [i/1000]) ;
-
    i := tk - lt_;
-   if LastState_ then begin
+   if UAC.Present = 0 then begin
       statestr := 'Absent';
       StatusBar1.Panels[2].Text := 'A:'+MSec2StrTime(i);
    end else begin
-      if LastState then statestr := 'Idle'
-                   else statestr := 'Busy';
+      if UAC.Busy = 0 then statestr := 'Idle'
+                      else statestr := 'Busy';
       StatusBar1.Panels[1].Text := 'P:'+MSec2StrTime(i);
    end;
    StatusBar1.Panels[0].Text := statestr;
+   i := tk - lt;
+   Caption := Format(statestr + ': %0.3f :: ' + FormCaptStr, [i/1000]) ;
+
 end;
 
 procedure TForm1.EITOChange(Sender: TObject);
@@ -378,7 +377,7 @@ begin
     0:;
     1:;
     2:;
-    3: ShellExecute(Application.Handle, 'open', PChar(s), nil, nil, 1);
+    3: ShellExecute(Application.Handle, 'open', PAnsiChar(s), nil, nil, 1);
   end;
 end;
 
