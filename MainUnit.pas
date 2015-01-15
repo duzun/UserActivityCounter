@@ -190,18 +190,12 @@ begin
    litk := GetLastInputTick;
    tk   := GetTickCount;
 
-   schg := LastInputStateChanged(LastState, lt, UAInactiveTimeout);
-   if schg then OnStateChangeExecute(Sender);
-
-   if not _Idle and LastInputStateChanged(LastState_, lt_, IdleTimeout) then
-     OnStateChange_Execute(Sender);
-
    if schg or boolean(UAC.Busy) or ((tk shr 5) and 2 = 0) then
       ShowInfoExecute(Sender);
 
    // Timer adjustment
    if Sender is TTimer then begin
-      i := UAInactiveTimeout shr 1;
+      i := UAC.IdleTimeout shr 1;
       if i = 0 then inc(i);
       (Sender as TTimer).Interval := i;
    end;
@@ -215,24 +209,17 @@ end;
 procedure TForm1.OnStateChangeExecute(Sender: TObject);
 var i: DWord;
 begin
-      if LastState then begin // -> active
-        inc(InactiveTime, litk - lt);
-        inc(ActiveTime, tk - litk);
+      if UAC.Busy then begin // -> active
         if not _Idle then Self.Color := clSkyBlue;
       end else begin          // -> idle
-        if lt < litk then i := litk else i := lt;
-        inc(ActiveTime, i - lt);
-        inc(InactiveTime, tk - i);
         if not _Idle then Self.Color := clMoneyGreen;
       end;
-      lt := tk;
-      LastState := not LastState;
 end;
 
 procedure TForm1.OnStateChange_Execute(Sender: TObject);
 var i: DWord;
 begin
-      if _Idle and LastState_ then Exit;
+      if _Idle and UAC.Absent then Exit;
 
       if LastState_ then begin // -> active
         inc(InactiveTime_, litk - lt_);

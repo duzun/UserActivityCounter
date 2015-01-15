@@ -14,48 +14,66 @@ function LastInputStateChanged(WasIdle: boolean; LastTick: DWord; IdleTimeout: D
 
 type TUserActivityCounter = class(TObject)
   private
-     FBusyTime   : DWord;    // Busy Time
-     FPresentTime: DWord;    // Present Time
-     FIdleTO     : DWord;    // Idle timeout
-     FAbsentTO   : DWord;    // Absent timeout
+     {
+       Time is an amount elapsed, but Tick is a point in time.
+
+     }
+
+     FBusyTime   : DWord;    // Acumulated Busy Time
+     FPresentTime: DWord;    // Acumulated Present Time
 
      FStartTick  : DWord;    // Tick Count at which started counting
      FLastTick   : DWord;    // Last Registered Tick
      FLITick     : DWord;    // Last Registered Last Input Tick
+     FBChangeTick: DWord;    // Last Busy/Idle state change
+     FPChangeTick: DWord;    // Last Present state change
+
      FBusy       : boolean;  // Busy state
-     FPresent    : boolean;
+     FPresent    : boolean;  // Present state
 
     procedure SetAbsentTimeout(const Value: DWord);
-    procedure SetIdleTimeout(const Value: DWord);  // Present state
+    procedure SetIdleTimeout(const Value: DWord);
 
   protected
+     FIdleTO     : DWord;    // Idle timeout
+     FAbsentTO   : DWord;    // Absent timeout
+
      procedure BusyChanged;
      procedure PresentChanged;
 
   public
-     OnBusyChange   : procedure (Sender: TObject);
-     OnPresentChange: procedure (Sender: TObject);
-     OnBusy         : procedure (Sender: TObject);
-     OnIdle         : procedure (Sender: TObject);
-     OnPresent      : procedure (Sender: TObject);
-     OnAbsent       : procedure (Sender: TObject);
+     OnBusyChange   : procedure (Sender: TObject); // Called when get busy or idle
+     OnPresentChange: procedure (Sender: TObject); // Called when get present or absent
+     OnBusy         : procedure (Sender: TObject); // Called when get busy
+     OnIdle         : procedure (Sender: TObject); // Called when get idle
+     OnPresent      : procedure (Sender: TObject); // Called when get present
+     OnAbsent       : procedure (Sender: TObject); // Called when get absent
      
      constructor Create;
      destructor  Destroy; override;
-     function    Update: boolean;
+     
+     function    Update: boolean;   // Call this method as often as posible to monitore state changes
 
-     property AbsentTimeout: DWord read FAbsentTO write SetAbsentTimeout;
-     property IdleTimeout: DWord read FIdleTO write SetIdleTimeout;
+     property AbsentTimeout: DWord read FAbsentTO write SetAbsentTimeout; // After this amount of msec. become absent
+     property IdleTimeout  : DWord read FIdleTO   write SetIdleTimeout;   // After this amount of msec. become idle
 
-     function IdleTime   : DWord;
-     function BusyTime   : DWord;
-     function AbsentTime : DWord;
-     function PresentTime: DWord;
-     function TotalTime  : DWord;
-     function StartTime  : DWord;
+     function StartTime  : DWord; // Tick Count at which started monitoring
 
-     function Present: DWord;
-     function Busy   : DWord;
+     // Totals:
+     function TotalTime  : DWord; // Total elapsed time since started monitoring
+     function IdleTime   : DWord; // Amount of Idle time (msec.)
+     function BusyTime   : DWord; // Amount of Busy time
+     function AbsentTime : DWord; // Amount of Absent time
+     function PresentTime: DWord; // Amount of Present time
+
+     // Last activity session:
+     function PresentSes: DWord; // Amount of time of last present session
+     function AbsentSes : DWord; // Amount of time of last absent session
+     function BusySes   : DWord; // Amount of time of last busy session
+     function IdleSes   : DWord; // Amount of time of last idle session
+
+     function Present: boolean;   // Presence state
+     function Busy   : boolean;   // Busy state
      
 end;
 
@@ -138,9 +156,9 @@ begin
    dec(Result, FBusyTime);
 end;
 
-function TUserActivityCounter.Present: DWord;
+function TUserActivityCounter.Present: boolean;
 begin
-   Result := DWord(FPresent);
+   Result := boolean(FPresent);
 end;
 
 function TUserActivityCounter.PresentTime: DWord;
@@ -189,9 +207,9 @@ begin
    end    
 end;
 
-function TUserActivityCounter.Busy: DWord;
+function TUserActivityCounter.Busy: boolean;
 begin
-   Result := DWord(FBusy);
+   Result := boolean(FBusy);
 end;
 
 function TUserActivityCounter.Update: boolean;
@@ -256,6 +274,26 @@ begin
    UAState := Result >= UAInactiveTimeout;
 end;
 
+
+function TUserActivityCounter.AbsentSes: DWord;
+begin
+
+end;
+
+function TUserActivityCounter.BusySes: DWord;
+begin
+
+end;
+
+function TUserActivityCounter.IdleSes: DWord;
+begin
+
+end;
+
+function TUserActivityCounter.PresentSes: DWord;
+begin
+
+end;
 
 initialization
    liInfo.cbSize := SizeOf(TLastInputInfo) ;
