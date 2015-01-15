@@ -6,12 +6,6 @@ uses Windows, SysUtils, Classes;
 function GetLastInputTick: DWord; // TickCount at the moment of last input
 function GetUnixTime: Int64;
 
-
-function GetIdleCount: DWord;     // Idle millisecconds (resolution ~10 - 16 ms.)
-function GetIdleState: Boolean;   // Current state - idle/acctive
-function LastInputStateChanged(WasIdle: boolean; LastTick: DWord; IdleTimeout: DWord=0): boolean;
-
-
 type TUserActivityCounter = class(TObject)
   private
      {
@@ -81,10 +75,6 @@ type TUserActivityCounter = class(TObject)
      function State  : Integer;   // 0 - Absent, 1 - Present and Idle, 2 - Busy (and Present)
 
 end;
-
-// Deprecated
-var UAInactiveTimeout: DWord;
-var UAState: Boolean; // true - idle, false - active
 
 var FormatSettings: TFormatSettings;
 
@@ -288,28 +278,6 @@ begin
    dec(Result, FIChangeTick);
 end;
 
-
-function LastInputStateChanged(WasIdle: boolean; LastTick: DWord; IdleTimeout: DWord): boolean;
-begin
-// li	to	lti	li	lta	[li]	to	lti ...
-   if IdleTimeout < 10 then IdleTimeout := UAInactiveTimeout;
-   Result := (not WasIdle) and (GetIdleCount >= IdleTimeout) or
-                  WasIdle  and (GetLastInputTick > LastTick);
-end;
-
-function GetIdleState: Boolean;
-begin
-   GetIdleCount;
-   Result := UAState;
-end;
-
-function GetIdleCount: DWord;
-begin
-   Result := GetTickCount;
-   dec(Result,GetLastInputTick);
-   UAState := Result >= UAInactiveTimeout;
-end;
-
 function TUserActivityCounter.State: Integer;
 begin
   Result := Result xor Result;
@@ -318,15 +286,15 @@ begin
  end;
 
 initialization
-   liInfo.cbSize := SizeOf(TLastInputInfo) ;
-   UAInactiveTimeout := 100;
-
-   GetIdleCount;
+  liInfo.cbSize := SizeOf(TLastInputInfo) ;
 
   {Setarile implicite pentru formatarea numerelor reale}
   GetLocaleFormatSettings(0, FormatSettings);
   FormatSettings.DecimalSeparator := '.';  {Indiferent de setarile din sistem, separatorul zecimal va fi '.'}
   FormatSettings.ShortTimeFormat := 'mm:ss';
   FormatSettings.LongTimeFormat := 'hh:mm:ss';
+
+  FormatSettings.ShortDateFormat := 'dd.MM.yyyy';
+  FormatSettings.DateSeparator := '.';
 
 end.

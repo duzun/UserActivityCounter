@@ -7,7 +7,8 @@ uses
   Dialogs, ExtCtrls, Registry,
   UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon;
 
-const WM_ICONTRAY = WM_USER + 1;
+const csv_cell_sep = #09';';
+      csv_ln_sep   = #13#10;
 
 type
   TForm1 = class(TForm)
@@ -50,18 +51,18 @@ type
     procedure HideToTrayExecute(Sender: TObject);
     procedure ShowFromTrayExecute(Sender: TObject);
     procedure TrayMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure TrayMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure StatusBar1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure FormDestroy(Sender: TObject);
     procedure OnIdleChangeExecute(Sender: TObject);
     procedure OnPresenceChangeExecute(Sender: TObject);
-    procedure FormKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormClick(Sender: TObject);
     procedure OnPresentChangeExecute(Sender: TObject);
   protected
-    procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
-    procedure WMSize(var Msg: TWMSize); message WM_SIZE;
+    procedure WMQueryEndSession(var Message: TWMQueryEndSession); message WM_QUERYENDSESSION;
+    procedure WMEndSession(var Message: TWMEndSession); message WM_ENDSESSION;
   private
     { Private declarations }
     TrayIcon: TTrayIcon;
@@ -112,74 +113,61 @@ begin
   FileClose(fh);
 end;
 
-var last_report: integer;
+type TUAC_Report = (ur_none, ur_came, ur_left, ur_last);
+var last_report: Tuac_report;
 
-function Report(fn:string; var buf: string; s: integer; t:DWord; a:DWord=0; tp:DWord=0; ta:DWord=0): boolean;
-var p: integer;
-    dt, tm: string;
-const ln = #13#10;
-
+function Report(fn:string; var buf: string; s: Tuac_report; uac: TUserActivityCounter): boolean;
+var   p: integer;
+      dt, tm: string;
+      
+      function add_cell(s:string): string; overload; begin
+         Result := s + csv_cell_sep;
+         buf := buf + Result;
+      end;
+      function add_cell(w:DWord): string; overload; begin Result := add_cell(MSec2StrTime(w)) end;
 begin
-  Result := false;
-  
-  // date ; came ; left ; present time ; busy time ; total present ; total absent
+  Result := true;
+  UAC.Update;
+
+  // date ; came ; left ; busy ; present ; absent ; total busy ; total present ; total absent
   if s <> last_report then begin
       tm := DateTimeToStr(Now, FormatSettings);
       p  := pos(' ', tm);
       dt := copy(tm, 1, p-1);
       tm := copy(tm, p+1, length(tm));
     
-      if s = 1 then begin // came
-         buf := buf + ln + dt + ';' + tm + ';';
+      if s = ur_came then begin // came
+         if last_report = ur_left then begin
+            add_cell(UAC.AbsentTimeLast);
+         end;
+         buf := buf + csv_ln_sep;
+         add_cell(dt);
+         add_cell(tm);
       end else
-      if s <= 0 then begin // left
-         buf := buf + tm + ';' + MSec2StrTime(t) + ';' + IntToStr(round(a/1000)) + ';';
-         if s = -1 then begin // quit
-            buf := buf + MSec2StrTime(tp) + ';' + IntToStr(round(ta/1000)) + ';' + ln;
+      if s >= ur_left then begin // left
+         if last_report < ur_left then begin
+            add_cell(tm);
+            add_cell(UAC.PresentTimeLast);
+         end;
+         if s = ur_last then begin // quit
+            add_cell(UAC.AbsentTimeLast);
+            add_cell(UAC.PresentTime);
+            add_cell(UAC.AbsentTime);
+            add_cell(UAC.BusyTime);
+            add_cell(tm);
+            buf := buf + csv_ln_sep;
          end;
       end;
       last_report := s;
   end;
 
   if buf = '' then Exit;
-  
+
   Result := FileAppend(fn, buf) >= 0;
-  
+
   if Result then buf := '';
 end;
 
-procedure LoadCSVFile (FileName: String; separator: char);
-var f: TextFile;
-    s1, s2: string;
-    i, j: integer;
-begin
-     i := 0;
-     AssignFile (f, FileName);
-     Reset(f);
-     while not eof(f) do
-      begin
-           readln (f, s1);
-           i := i + 1;
-           j := 0;
-           while pos(separator, s1)<>0 do
-            begin
-                 s2 := copy(s1,1,pos(separator, s1)-1);
-                 j := j + 1;
-                 Delete(s1, 1, pos(separator, S1));
-//                 StringGrid1.Cells[j-1, i-1] := s2;
-            end;
-           if pos (separator, s1)=0 then
-            begin
-                 j := j + 1;
-//                 StringGrid1.Cells[j-1, i-1] := s1;
-            end;
-//           StringGrid1.ColCount := j;
-//           StringGRid1.RowCount := i+1;
-      end;
-     CloseFile(f);
-end;
-
- 
 function OnWhichPanel(Sender: TStatusBar; X: integer): integer;
 var i, n: integer;
 begin
@@ -199,21 +187,29 @@ begin
   TrayIcon := TTrayIcon.Create(Self);
   TrayIcon.Hint := Caption;
   TrayIcon.OnMouseDown := TrayMouseDown;
+  TrayIcon.OnMouseMove := TrayMouseMove;
 
    usrnm := GetEnvironmentVariable('USERNAME');
    _csv_buf := '';
    _csv_fn := Application.ExeName;
    _csv_fn := ExtractFilePath(_csv_fn) + usrnm + '_' + ChangeFileExt(ExtractFileName(_csv_fn), '.csv');
-   if not FileExists(_csv_fn) then FileAppend(_csv_fn, 'date;came;left;pres.;busy;t.pres.;t.busy');
+   if not FileExists(_csv_fn) then
+      FileAppend(_csv_fn, 
+                   '~ date ~ ' + csv_cell_sep +                            
+                   '~ came ~ ' + csv_cell_sep + '~ left ~ ' + csv_cell_sep + 
+                   '~ pres.~ ' + csv_cell_sep + '~ abs. ~ ' + csv_cell_sep +
+                   '~t.pres~ ' + csv_cell_sep + '~t.abs.~ ' + csv_cell_sep + 
+                   '~ busy ~ ' + csv_cell_sep + '~ down ~ ' + csv_cell_sep 
+                );
 
    _toHide := byte(ParamStr(1) = '/min');
 
    UAC := TUserActivityCounter.Create;
-   UAC.AbsentTimeout := 300;
-   UAC.OnBusy := OnBusyChangeExecute;
-   UAC.OnIdle := OnIdleChangeExecute;
-   UAC.OnPresent := OnPresentChangeExecute;
-   UAC.OnAbsent  := OnAbsentChangeExecute;
+   UAC.AbsentTimeout   := 300;
+   UAC.OnBusy          := OnBusyChangeExecute;
+   UAC.OnIdle          := OnIdleChangeExecute;
+   UAC.OnPresent       := OnPresentChangeExecute;
+   UAC.OnAbsent        := OnAbsentChangeExecute;
    UAC.OnPresentChange := OnPresenceChangeExecute;
 
    StartDate := Now;
@@ -226,48 +222,89 @@ begin
 end;
 
 procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
-var fn: string; s: integer;
-const ln = #13#10;
 begin
-  UAC.Update;
-
-  Report(_csv_fn, _csv_buf, -1, UAC.PresentTimeLast, UAC.BusyTimeLast, UAC.PresentTime, UAC.BusyTime);  // Quit
-
-  if _csv_buf <> '' then begin
-    _toHide := 2;
-    Action := caMinimize;
+  if (_toHide < 2) or not Report(_csv_fn, _csv_buf, ur_last, UAC) then begin
+     Action := caNone;
+     Self.Hide;
   end;
-
-  if (UAC.BusyTime < 1000) then Exit;
-
-  fn := ChangeFileExt(Application.ExeName, '.log');
-
-  FileAppend(fn, 
-         ' - - -' + ln +
-         '| ' + DateTimeToStr(StartDate, FormatSettings) + ' |' + ln +
-         'Present: ' + MSec2StrTime(UAC.PresentTime) + ln +
-         'Absent : ' + MSec2StrTime(UAC.AbsentTime ) + ln +
-         'Busy   : ' + MSec2StrTime(UAC.BusyTime) + ln +
-         'Total  : ' + MSec2StrTime(UAC.TotalTime) + ln +
-         '| ' + DateTimeToStr(Now, FormatSettings) + ' |' + ln   
-  );
-
 end;
 
-
 procedure TForm1.FormDestroy(Sender: TObject);
+var fn: string;
 begin
+  Report(_csv_fn, _csv_buf, ur_last, UAC);  // Quit
+
+  if (UAC.BusyTime >= 1000) then begin
+    fn := ChangeFileExt(Application.ExeName, '.log');
+    FileAppend(fn,
+         ' - - -' + csv_ln_sep +
+         '| ' + DateTimeToStr(StartDate, FormatSettings) + ' |' + csv_ln_sep +
+         'Present: ' + MSec2StrTime(UAC.PresentTime) + csv_ln_sep +
+         'Absent : ' + MSec2StrTime(UAC.AbsentTime ) + csv_ln_sep +
+         'Busy   : ' + MSec2StrTime(UAC.BusyTime) + csv_ln_sep +
+         'Total  : ' + MSec2StrTime(UAC.TotalTime) + csv_ln_sep +
+         '| ' + DateTimeToStr(Now, FormatSettings) + ' |' + csv_ln_sep
+    );
+  end;
+  
   FreeAndNil(UAC)
 end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+const exit_condition: TShiftState = [ssAlt,ssCtrl];
 begin
    case Key of
-   27: Self.Close;
+   27: begin
+       if exit_condition = Shift then _toHide := 2;
+       Self.Hide;
+   end;
    32: if ssCtrl in Shift then begin
           EITO.Visible := not EITO.Visible;
        end;
    end;
+end;
+
+procedure TForm1.TrayMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+const exit_condition: TShiftState = [ssAlt,ssCtrl,ssRight];
+begin
+  if exit_condition = Shift then _toHide := 2;
+  case Button of
+    mbLeft:
+        begin
+          ShowFromTrayExecute(Self);
+        end;
+    mbRight:
+        begin
+          HideToTrayExecute(Self);
+        end;
+    mbMiddle:
+        begin
+          Self.BringToFront;
+          BringWindowToTop(Self.Handle);
+          BringWindowToTop(Application.Handle);
+        end;
+  end;
+end;
+
+procedure TForm1.TrayMouseMove;
+begin
+  TrayIcon.Hint := 'UAC: ' + MSec2StrTime(UAC.PresentTime);
+end;
+
+procedure TForm1.WMQueryEndSession(var Message: TWMQueryEndSession);
+begin
+   _toHide := 2;
+   Message.Result := 0;
+   if Report(_csv_fn, _csv_buf, ur_last, UAC) then
+      Message.Result := 1;
+
+   inherited;
+end;
+
+procedure TForm1.WMEndSession(var Message: TWMEndSession);
+begin
+   if Message.EndSession then _toHide := 2;
+   inherited;
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
@@ -275,7 +312,7 @@ var i:dword;
     schg: boolean;
 begin
    if UAC = nil then Exit;
-   
+
    schg := UAC.Update;
    
    if schg or UAC.Busy or ((GetTickCount shr 5) and 2 = 0) then
@@ -294,13 +331,13 @@ begin
       Self.Hide;
       end;
    2: begin
-      Self.Close;
+      if Report(_csv_fn, _csv_buf, ur_last, UAC) then
+         Self.Close;
       end;
    end;   
 end;
 
 procedure TForm1.OnBusyChangeExecute(Sender: TObject);
-var i: DWord;
 begin
    Self.Color := clSkyBlue;
 end;
@@ -356,37 +393,12 @@ end;
 procedure TForm1.SetIdleExecute(Sender: TObject);
 begin
    UAC.Update;
-
    _Idle := not _Idle;
    if _Idle then begin
       Self.Color := clYellow;
    end else begin
       Self.Color := clSkyBlue;
    end;
-end;
-
-procedure TForm1.TrayMessage(var Msg: TMessage);
-begin
-  case Msg.lParam of
-    WM_LBUTTONDOWN:
-    begin
-      ShowFromTrayExecute(Self);
-    end;
-    WM_RBUTTONDOWN:
-    begin
-      HideToTrayExecute(Self);
-    end;
-    WM_MOUSEMOVE:
-    begin
-      Self.BringToFront;
-    end;
-    else StatusBar1.Panels[2].Text := IntToStr(Msg.lParam) + ':' + IntToStr(Msg.WParam);
-  end;
-end;
-
-procedure TForm1.WMSize(var Msg: TWMSize);
-begin
-
 end;
 
 procedure TForm1.HideToTrayExecute(Sender: TObject);
@@ -399,24 +411,6 @@ begin
    Application.Restore;
    Show;
    WindowState := wsNormal;   
-end;
-
-procedure TForm1.TrayMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  case Button of
-    mbLeft:
-        begin
-          ShowFromTrayExecute(Self);
-        end;
-    mbRight:
-        begin
-          HideToTrayExecute(Self);
-        end;
-    mbMiddle:
-        begin
-          Self.BringToFront;
-        end;
-  end;
 end;
 
 procedure TForm1.StatusBar1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -448,19 +442,23 @@ end;
 
 procedure TForm1.OnPresenceChangeExecute(Sender: TObject);
 begin
-    if UAC.Present then Report(_csv_fn, _csv_buf, 1, UAC.AbsentTimeLast)
-                   else Report(_csv_fn, _csv_buf, 0, UAC.PresentTimeLast, UAC.BusyTimeLast);
+    if UAC.Present then Report(_csv_fn, _csv_buf, ur_came, UAC)
+                   else Report(_csv_fn, _csv_buf, ur_left, UAC);
 end;
 
 
 procedure TForm1.FormClick(Sender: TObject);
 begin
-   EITO.Visible := false;
+   EITO.Hide;
 end;
 
 procedure TForm1.OnPresentChangeExecute(Sender: TObject);
 begin
   if true then ;
 end;
+
+
+initialization
+   last_report := ur_none;
 
 end.
