@@ -66,4 +66,5 @@ __history/
 *.ppu
 *.csv
 
+*.log
 bak_log.txt
