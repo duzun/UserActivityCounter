@@ -19,7 +19,6 @@ type
     ShowInfo: TAction;
     Label1: TLabel;
     Label2: TLabel;
-    LITO: TLabel;
     LPresent: TLabel;
     LAbsent: TLabel;
     Label5: TLabel;
@@ -40,6 +39,8 @@ type
     LIdleL: TLabel;
     lPresentL: TLabel;
     LAbsentL: TLabel;
+    LDateTime: TLabel;
+    Label7: TLabel;
     procedure Timer1Timer(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure ShowInfoExecute(Sender: TObject);
@@ -147,7 +148,8 @@ begin
             add_cell(UAC.AbsentTimeLast);
          end;
          buf := buf + csv_ln_sep;
-         mktm(Now);
+//          mktm(Now);
+         mktm(Now - UAC.PresentTimeLast / MSecsPerDay);
          add_cell(dt);
          add_cell(tm);
       end else
@@ -194,7 +196,7 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   TrayIcon := TTrayIcon.Create(Self);
-  TrayIcon.Hint := Caption;
+  TrayIcon.Hint        := Caption;
   TrayIcon.OnMouseDown := TrayMouseDown;
   TrayIcon.OnMouseMove := TrayMouseMove;
 
@@ -220,6 +222,10 @@ begin
    UAC.OnPresent       := OnPresentChangeExecute;
    UAC.OnAbsent        := OnAbsentChangeExecute;
    UAC.OnPresentChange := OnPresenceChangeExecute;
+
+   UAC.Update;
+   if UAC.Present then UAC.PresentChanged(Self);
+   if UAC.Busy    then UAC.BusyChanged(Self);
 
    StartDate := Now;
 
@@ -336,14 +342,22 @@ begin
         PBT_APMRESUMESUSPEND      : begin
             UAC.Reset;
             UAC.Update;
+            if UAC.Present then UAC.PresentChanged(Self);
+            if UAC.Busy    then UAC.BusyChanged(Self);
         end; 
         PBT_APMRESUMECRITICAL     : begin
             Report(_csv_fn, _csv_buf, ur_last, UAC);           
             UAC.Reset;
+            UAC.Update;
+            if UAC.Present then UAC.PresentChanged(Self);
+            if UAC.Busy    then UAC.BusyChanged(Self);
         end;
         PBT_APMSUSPEND            : begin
             Report(_csv_fn, _csv_buf, ur_last, UAC);
             UAC.Reset;
+            UAC.Update;
+            if UAC.Present then UAC.PresentChanged(Self);
+            if UAC.Busy    then UAC.BusyChanged(Self);
         end;
    end;
    inherited;
@@ -407,6 +421,8 @@ begin
     LIdleL.Caption      := MSec2StrTime(UAC.IdleTimeLast);
     LPresentL.Caption   := MSec2StrTime(UAC.PresentTimeLast(true));
     LAbsentL.Caption    := MSec2StrTime(UAC.AbsentTimeLast);
+
+    LDateTime.Caption   := DateTimeToStr(Now, FormatSettings);
 
    if not UAC.Present then begin
       statestr := 'Absent';

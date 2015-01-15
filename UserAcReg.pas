@@ -33,9 +33,6 @@ type TUserActivityCounter = class(TObject)
      FIdleTO     : DWord;    // Idle timeout
      FAbsentTO   : DWord;    // Absent timeout
 
-     procedure BusyChanged;
-     procedure PresentChanged;
-
   public
      OnStateChange  : TNotifyEvent; // Called when get busy or idle
      OnBusyChange   : TNotifyEvent; // Called when get busy or idle
@@ -50,6 +47,9 @@ type TUserActivityCounter = class(TObject)
      destructor  Destroy; override;
 
      function    Update: boolean;   // Call this method as often as posible to monitore state changes
+
+     procedure BusyChanged(Sender: TObject=nil);
+     procedure PresentChanged(Sender: TObject=nil);
 
      property AbsentTimeout: DWord read FAbsentTO write SetAbsentTimeout; // After this amount of msec. become absent
      property IdleTimeout  : DWord read FIdleTO   write SetIdleTimeout;   // After this amount of msec. become idle
@@ -95,37 +95,23 @@ begin
    end;
 end;
 
-function GetUnixTime: Int64;
-begin
-   Result := DateTimeToUnix(Date+Time);
-end;
+function GetUnixTime: Int64; begin Result := DateTimeToUnix(Date+Time); end;
 
 function min(a,b:DWord):DWord;begin if a < b then Result := a else Result := b end;
 function max(a,b:DWord):DWord;begin if a < b then Result := b else Result := a end;
 
 { TUserActivityCounter }
 
-function TUserActivityCounter.AbsentTime: DWord;
-begin
-   Result := TotalTime;
-   dec(Result, FPresentTime);
-end;
-
-function TUserActivityCounter.BusyTime: DWord;
-begin
-   Result := FBusyTime;
-end;
-
 constructor TUserActivityCounter.Create;
 var i: DWord;
 begin
   inherited Create;
-
-  Self.Reset;
   
   i := i xor i;
   FIdleTO      := 128;
   FAbsentTO    := i;
+
+  Self.Reset;
   
   // ??? should reset?
   FLITick      := i;
@@ -169,74 +155,34 @@ begin
   FPresent := false;
 end;
 
-function TUserActivityCounter.Busy: boolean;
-begin
-   Result := boolean(FBusy);
-end;
-
-function TUserActivityCounter.Present: boolean;
-begin
-   Result := boolean(FPresent);
-end;
-
-function TUserActivityCounter.IdleTime: DWord;
-begin
-   Result := TotalTime;
-   dec(Result, FBusyTime);
-end;
-
-function TUserActivityCounter.PresentTime: DWord;
-begin
-   Result := FPresentTime;
-end;
-
-function TUserActivityCounter.TotalTime: DWord;
-begin
-   Result := GetTickCount;
-   dec(Result, FStartTick);
-end;
-
-procedure TUserActivityCounter.SetAbsentTimeout(const Value: DWord); begin FAbsentTO := Value; end;
-procedure TUserActivityCounter.SetIdleTimeout(const Value: DWord); begin FIdleTO := Value; end;
-
-procedure TUserActivityCounter.BusyChanged;
-begin
-   if Assigned(OnStateChange) then OnStateChange(Self);
-   if Assigned(OnBusyChange)  then OnBusyChange(Self);
-   if FBusy then begin   if Assigned(OnBusy) then OnBusy(Self);
-   end else begin        if Assigned(OnIdle) then OnIdle(Self);
-   end
-end;
-
-procedure TUserActivityCounter.PresentChanged;
-begin
-   if not FPresent and Assigned(OnStateChange) then OnStateChange(Self);
-   if Assigned(OnPresentChange) then OnPresentChange(Self);
-   if FPresent then begin   if Assigned(OnPresent) then OnPresent(Self);
-   end else begin           if Assigned(OnAbsent)  then OnAbsent(Self);
-   end
-end;
-
-function TUserActivityCounter.Update: boolean;
+function TUserActivityCounter.Update: boolean; // @return state shanged since last run
 var tk, li: DWord;
     cp, cb: boolean;
+    first: boolean;
 begin
-  li := GetLastInputTick;
+  li := GetLastInputTick; // = 0 on error or no input at all
   tk := GetTickCount;
   
-  if FStartTick = 0 then begin 
-      FBChangeTick := li;
-      FIChangeTick := li;
-      FPChangeTick := li;
-      FAChangeTick := li;
+  cb := tk < li + FIdleTO;
+  cp := tk < li + FAbsentTO; // computed presence
 
-      if li < tk then FStartTick := li 
-                 else FStartTick := tk;
+  first := FStartTick = 0;
+  if first then begin
+      if cp then begin
+         FStartTick := li
+      end else begin
+         li := 0;
+         FStartTick := tk
+      end;
+      FBusy    := cb;
+      FPresent := cp;
+      
+      FBChangeTick := FStartTick;
+      FIChangeTick := FStartTick;
+      FPChangeTick := FStartTick;
+      FAChangeTick := FStartTick;
   end;
   
-  cb := tk < li + FIdleTO;
-  cp := tk < li + FAbsentTO;
-
   if FLastTick < li then begin  // new input
      if li <= FLITick + FIdleTO then begin
         inc(FBusyTime, li-FLITick);
@@ -253,8 +199,8 @@ begin
 
   FLastTick := tk;
 
-  cb := FBusy <> cb;
-  cp := FPresent <> cp;
+  cb := FBusy <> cb;      // busy state changed
+  cp := FPresent <> cp;   // present state changed
 
   if cb then begin
      FBusy := not FBusy;
@@ -272,16 +218,40 @@ begin
   Result := cb or cp;
 end;
 
+function TUserActivityCounter.PresentTime: DWord; begin
+   Result := FPresentTime;
+end;
+
+function TUserActivityCounter.AbsentTime: DWord; begin
+   Result := TotalTime;
+   dec(Result, FPresentTime);
+end;
+
+function TUserActivityCounter.BusyTime: DWord; begin
+   Result := FBusyTime;
+end;
+
+function TUserActivityCounter.IdleTime: DWord; begin
+   Result := TotalTime;
+   dec(Result, FBusyTime);
+end;
+
+function TUserActivityCounter.TotalTime: DWord; begin
+   Result := GetTickCount;
+   dec(Result, FStartTick);
+end;
+
 function TUserActivityCounter.PresentTimeLast(Potent:boolean): DWord;
 begin
    if Potent and FPresent then Result := GetTickCount
                           else Result := FLITick;
-   dec(Result, FPChangeTick);
+   if Result > 0 then dec(Result, FPChangeTick);
 end;
 
 function TUserActivityCounter.AbsentTimeLast: DWord;
 begin
-   if FPresent then Result := FPChangeTick else Result := GetTickCount;
+   if FPresent then Result := FPChangeTick 
+               else Result := GetTickCount;
    dec(Result, FAChangeTick);
 end;
 
@@ -289,13 +259,34 @@ function TUserActivityCounter.BusyTimeLast(Potent:boolean): DWord;
 begin
    if Potent and FBusy then Result := GetTickCount
                        else Result := FLITick;
-   dec(Result, FBChangeTick);
+   if Result > 0 then dec(Result, FBChangeTick);
 end;
 
 function TUserActivityCounter.IdleTimeLast: DWord;
 begin
-   if FBusy then Result := FBChangeTick else Result := GetTickCount;
+   if FBusy then Result := FBChangeTick 
+            else Result := GetTickCount;
    dec(Result, FIChangeTick);
+end;
+
+procedure TUserActivityCounter.BusyChanged;
+begin
+   if Sender = nil then Sender := Self;
+   if Assigned(OnStateChange) then OnStateChange(Sender);
+   if Assigned(OnBusyChange)  then OnBusyChange(Sender);
+   if FBusy then begin   if Assigned(OnBusy) then OnBusy(Sender);
+   end else begin        if Assigned(OnIdle) then OnIdle(Sender);
+   end
+end;
+
+procedure TUserActivityCounter.PresentChanged;
+begin
+   if Sender = nil then Sender := Self;
+   if not FPresent and Assigned(OnStateChange) then OnStateChange(Sender);
+   if Assigned(OnPresentChange) then OnPresentChange(Sender);
+   if FPresent then begin   if Assigned(OnPresent) then OnPresent(Sender);
+   end else begin           if Assigned(OnAbsent)  then OnAbsent(Sender);
+   end
 end;
 
 function TUserActivityCounter.State: Integer;
@@ -304,6 +295,13 @@ begin
   inc(Result, Integer(FPresent));
   inc(Result, Integer(FBusy));
 end;
+
+function TUserActivityCounter.Busy: boolean;    begin Result := boolean(FBusy);    end;
+function TUserActivityCounter.Present: boolean; begin Result := boolean(FPresent); end;
+
+
+procedure TUserActivityCounter.SetAbsentTimeout(const Value: DWord); begin FAbsentTO := Value; end;
+procedure TUserActivityCounter.SetIdleTimeout(const Value: DWord); begin FIdleTO := Value; end;
 
 initialization
   liInfo.cbSize := SizeOf(TLastInputInfo) ;
