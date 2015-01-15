@@ -72,7 +72,7 @@ type
     _Idle: Boolean;
     StartDate: TDateTime;
 
-    _toHide: boolean;
+    _toHide: byte;
     
   public
     { Public declarations }
@@ -112,6 +112,8 @@ begin
   FileClose(fh);
 end;
 
+var last_report: integer;
+
 function Report(fn:string; var buf: string; s: integer; t:DWord; a:DWord=0; tp:DWord=0; ta:DWord=0): boolean;
 var p: integer;
     dt, tm: string;
@@ -121,20 +123,22 @@ begin
   Result := false;
   
   // date ; came ; left ; present time ; busy time ; total present ; total absent
-  
-  tm := DateTimeToStr(Now);
-  p := pos(' ', tm);
-  dt := copy(tm, 1, p-1);
-  tm := copy(tm, p+1, length(tm));
-  
-  if s = 1 then begin // came
-     buf := buf + ln + dt + ';' + tm + ';';
-  end else
-  if s <= 0 then begin // left
-     buf := buf + tm + ';' + IntToStr(round(t/1000)) + ';' + IntToStr(round(a/1000)) + ';';
-     if s = -1 then begin // quit
-        buf := buf + IntToStr(round(tp/1000)) + ';' + IntToStr(round(ta/1000)) + ';' + ln;
-     end;
+  if s <> last_report then begin
+      tm := DateTimeToStr(Now, FormatSettings);
+      p  := pos(' ', tm);
+      dt := copy(tm, 1, p-1);
+      tm := copy(tm, p+1, length(tm));
+    
+      if s = 1 then begin // came
+         buf := buf + ln + dt + ';' + tm + ';';
+      end else
+      if s <= 0 then begin // left
+         buf := buf + tm + ';' + MSec2StrTime(t) + ';' + IntToStr(round(a/1000)) + ';';
+         if s = -1 then begin // quit
+            buf := buf + MSec2StrTime(tp) + ';' + IntToStr(round(ta/1000)) + ';' + ln;
+         end;
+      end;
+      last_report := s;
   end;
 
   if buf = '' then Exit;
@@ -202,7 +206,7 @@ begin
    _csv_fn := ExtractFilePath(_csv_fn) + usrnm + '_' + ChangeFileExt(ExtractFileName(_csv_fn), '.csv');
    if not FileExists(_csv_fn) then FileAppend(_csv_fn, 'date;came;left;pres.;busy;t.pres.;t.busy');
 
-   _toHide := ParamStr(1) = '/min';
+   _toHide := byte(ParamStr(1) = '/min');
 
    UAC := TUserActivityCounter.Create;
    UAC.AbsentTimeout := 300;
@@ -222,12 +226,17 @@ begin
 end;
 
 procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
-var fn: string;
+var fn: string; s: integer;
 const ln = #13#10;
 begin
   UAC.Update;
 
   Report(_csv_fn, _csv_buf, -1, UAC.PresentTimeLast, UAC.BusyTimeLast, UAC.PresentTime, UAC.BusyTime);  // Quit
+
+  if _csv_buf <> '' then begin
+    _toHide := 2;
+    Action := caMinimize;
+  end;
 
   if (UAC.BusyTime < 1000) then Exit;
 
@@ -235,12 +244,12 @@ begin
 
   FileAppend(fn, 
          ' - - -' + ln +
-         '| ' + DateTimeToStr(StartDate) + ' |' + ln +
+         '| ' + DateTimeToStr(StartDate, FormatSettings) + ' |' + ln +
          'Present: ' + MSec2StrTime(UAC.PresentTime) + ln +
          'Absent : ' + MSec2StrTime(UAC.AbsentTime ) + ln +
          'Busy   : ' + MSec2StrTime(UAC.BusyTime) + ln +
          'Total  : ' + MSec2StrTime(UAC.TotalTime) + ln +
-         '| ' + DateTimeToStr(Now) + ' |' + ln   
+         '| ' + DateTimeToStr(Now, FormatSettings) + ' |' + ln   
   );
 
 end;
@@ -279,10 +288,15 @@ begin
       (Sender as TTimer).Interval := i;
    end;
 
-   if _toHide then begin
-      _toHide := false;
-      Hide;
-   end;
+   case _toHide of
+   1: begin
+      _toHide := 0;
+      Self.Hide;
+      end;
+   2: begin
+      Self.Close;
+      end;
+   end;   
 end;
 
 procedure TForm1.OnBusyChangeExecute(Sender: TObject);
