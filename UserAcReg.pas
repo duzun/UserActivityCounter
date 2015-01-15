@@ -45,6 +45,7 @@ type TUserActivityCounter = class(TObject)
      OnPresent      : TNotifyEvent; // Called when get present
      OnAbsent       : TNotifyEvent; // Called when get absent
 
+     procedure   Reset;
      constructor Create;
      destructor  Destroy; override;
 
@@ -86,8 +87,12 @@ var liInfo: TLastInputInfo;
 
 function GetLastInputTick: DWord;
 begin
-   GetLastInputInfo(liInfo);
-   Result := liInfo.dwTime;
+   try
+     GetLastInputInfo(liInfo);
+     Result := liInfo.dwTime;
+   except
+     Result := 0;
+   end;
 end;
 
 function GetUnixTime: Int64;
@@ -116,23 +121,16 @@ var i: DWord;
 begin
   inherited Create;
 
+  Self.Reset;
+  
   i := i xor i;
   FIdleTO      := 128;
-
   FAbsentTO    := i;
-  FBusyTime    := i;
-  FPresentTime := i;
+  
+  // ??? should reset?
   FLITick      := i;
-
   FLastTick    := i;
   FStartTick   := i;
-  FBChangeTick := i;
-  FIChangeTick := i;
-  FPChangeTick := i;
-  FAChangeTick := i;
-
-  FBusy    := false;
-  FPresent := false;
 
   OnStateChange  := nil;
   OnBusyChange   := OnStateChange;
@@ -147,6 +145,28 @@ destructor TUserActivityCounter.Destroy;
 begin
   Self.Update;
   inherited;
+end;
+
+procedure TUserActivityCounter.Reset;
+var i: DWord;
+begin
+  i := i xor i;
+  // ??? should reset?
+  FLITick      := i;
+  FLastTick    := i;
+  FStartTick   := i;
+
+  // Need reset:
+  FBusyTime    := i;
+  FPresentTime := i;
+
+  FBChangeTick := i;
+  FIChangeTick := i;
+  FPChangeTick := i;
+  FAChangeTick := i;
+
+  FBusy    := false;
+  FPresent := false;
 end;
 
 function TUserActivityCounter.Busy: boolean;
@@ -283,7 +303,7 @@ begin
   Result := Result xor Result;
   inc(Result, Integer(FPresent));
   inc(Result, Integer(FBusy));
- end;
+end;
 
 initialization
   liInfo.cbSize := SizeOf(TLastInputInfo) ;

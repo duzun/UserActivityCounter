@@ -63,6 +63,8 @@ type
   protected
     procedure WMQueryEndSession(var Message: TWMQueryEndSession); message WM_QUERYENDSESSION;
     procedure WMEndSession(var Message: TWMEndSession); message WM_ENDSESSION;
+    procedure WMPowerBroadcast(var Message: TMessage); message WM_POWERBROADCAST;
+
   private
     { Private declarations }
     TrayIcon: TTrayIcon;
@@ -116,9 +118,18 @@ end;
 type TUAC_Report = (ur_none, ur_came, ur_left, ur_last);
 var last_report: Tuac_report;
 
-function Report(fn:string; var buf: string; s: Tuac_report; uac: TUserActivityCounter): boolean;
-var   p: integer;
-      dt, tm: string;
+function Report(fn:string; var buf: string; report: Tuac_report; uac: TUserActivityCounter): boolean;
+      var dt, tm: string;
+      
+      function mktm(n:TDateTime): string;
+      var p: integer;
+      begin
+          Result := DateTimeToStr(n, FormatSettings);
+          p  := pos(' ', Result);
+          dt := copy(Result, 1, p-1);
+          Result := copy(Result, p+1, length(Result)); 
+          tm := Result;     
+      end;
       
       function add_cell(s:string): string; overload; begin
          Result := s + csv_cell_sep;
@@ -129,27 +140,25 @@ begin
   Result := true;
   UAC.Update;
 
-  // date ; came ; left ; busy ; present ; absent ; total busy ; total present ; total absent
-  if s <> last_report then begin
-      tm := DateTimeToStr(Now, FormatSettings);
-      p  := pos(' ', tm);
-      dt := copy(tm, 1, p-1);
-      tm := copy(tm, p+1, length(tm));
-    
-      if s = ur_came then begin // came
+  // date ; came ; left ; present ; absent ; total present ; total absent ; busy ; down
+  if report <> last_report then begin
+      if report = ur_came then begin // came
          if last_report = ur_left then begin
             add_cell(UAC.AbsentTimeLast);
          end;
          buf := buf + csv_ln_sep;
+         mktm(Now);
          add_cell(dt);
          add_cell(tm);
       end else
-      if s >= ur_left then begin // left
+      if report >= ur_left then begin // left
          if last_report < ur_left then begin
+            mktm(Now - UAC.IdleTimeLast / MSecsPerDay);
             add_cell(tm);
             add_cell(UAC.PresentTimeLast);
          end;
-         if s = ur_last then begin // quit
+         if report = ur_last then begin // quit
+            mktm(Now);
             add_cell(UAC.AbsentTimeLast);
             add_cell(UAC.PresentTime);
             add_cell(UAC.AbsentTime);
@@ -158,7 +167,7 @@ begin
             buf := buf + csv_ln_sep;
          end;
       end;
-      last_report := s;
+      last_report := report;
   end;
 
   if buf = '' then Exit;
@@ -304,6 +313,39 @@ end;
 procedure TForm1.WMEndSession(var Message: TWMEndSession);
 begin
    if Message.EndSession then _toHide := 2;
+   inherited;
+end;
+
+procedure TForm1.WMPowerBroadcast;
+const  // http://winapi.freetechsecrets.com/win32/WIN32WMPOWERBROADCAST.htm
+     PBT_APMBATTERYLOW         = $09;
+     PBT_APMOEMEVENT           = $0B;
+     PBT_APMPOWERSTATUSCHANGE  = $0A;
+     PBT_APMQUERYSUSPEND       = $00; // win ask the app if it is ok to suspend
+     PBT_APMQUERYSUSPENDFAILED = $02; // some app has not agree to suspend
+     PBT_APMRESUMECRITICAL     = $06; // resume after a critical suspension  
+     PBT_APMRESUMESUSPEND      = $07; // resume after a suspension           
+     PBT_APMSUSPEND            = $04; // system is about to suspend. save work
+begin
+   case Message.WParam of
+        PBT_APMBATTERYLOW         : ;
+        PBT_APMOEMEVENT           : ;  
+        PBT_APMPOWERSTATUSCHANGE  : ;
+        PBT_APMQUERYSUSPEND       : ; 
+        PBT_APMQUERYSUSPENDFAILED : ; 
+        PBT_APMRESUMESUSPEND      : begin
+            UAC.Reset;
+            UAC.Update;
+        end; 
+        PBT_APMRESUMECRITICAL     : begin
+            Report(_csv_fn, _csv_buf, ur_last, UAC);           
+            UAC.Reset;
+        end;
+        PBT_APMSUSPEND            : begin
+            Report(_csv_fn, _csv_buf, ur_last, UAC);
+            UAC.Reset;
+        end;
+   end;
    inherited;
 end;
 
@@ -456,7 +498,6 @@ procedure TForm1.OnPresentChangeExecute(Sender: TObject);
 begin
   if true then ;
 end;
-
 
 initialization
    last_report := ur_none;
