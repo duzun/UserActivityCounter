@@ -14,7 +14,7 @@ rem --------------------------------------------------------------------------
 :defaults
 rem Defaults   
 
-if "%bak_ext%."    =="." set bak_ext=ppr, prj, dpr, bpr, pas, dcu, ddp, c, h, cpp, php, inc, js, bat, cmd, cfg, ini, inf, csv, xls, doc, htm, html, exe, com, dfm, ico
+if "%bak_ext%."    =="." set bak_ext=ppr, prj, dpr, bpr, pas, dcu, ddp, c, h, cpp, php, inc, js, css, bat, cmd, cfg, ini, inf, csv, xls, doc, htm, html, exe, com, dfm, ico
 if "%bak_upx%."    =="." set bak_upx=exe, com, dll, w?x, bpl  
 if "%bak_clean%."  =="." set bak_clean=*.ex~, *.~???, *.tmp, *.tds, *.qst, *.fpd, *.sym, *.ilc, *.ild, *.tds, *.ppu
 if "%bak_dir%."    =="." set bak_dir=%date%
@@ -356,3 +356,4 @@ goto del_vars
 rem exit
 rem --------------------------------------------------------------------------
 :e
+REM Updated: 03.03.2011, 13:10:31,03  

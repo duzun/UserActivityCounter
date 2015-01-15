@@ -1,7 +1,7 @@
 unit UserAcReg;
 
 interface
-uses Windows;
+uses Windows, SysUtils;
 
 function GetLastInputTick: DWord; // TickCount at the moment of last input
 function GetIdleCount: DWord;   // Idle millisecconds (resolution ~10 - 16 ms.)
@@ -15,9 +15,11 @@ var UAResolution: word;
 var UAInactiveTimeout: DWord;
 var UAState: Boolean; // true - idle, false - active
 
+var FormatSettings: TFormatSettings;
+
 implementation
 
-uses SysUtils, DateUtils;
+uses DateUtils;
 var liInfo: TLastInputInfo;
 
 function LastInputStateChanged(WasIdle: boolean; LastTick: DWord; IdleTimeout: DWord): boolean;
@@ -47,7 +49,7 @@ function IdleTick: DWord;
 begin
    Result := GetIdleCount;
    if(UAResolution>1) then
-      Result := Result DIV UAResolution;
+      Result := Result div UAResolution;
 end;
 
 function GetUnixTime: Int64;
@@ -61,5 +63,11 @@ initialization
    UAInactiveTimeout := 100;
 
    GetIdleCount;
-   
+
+  {Setarile implicite pentru formatarea numerelor reale}
+  GetLocaleFormatSettings(0, FormatSettings);
+  FormatSettings.DecimalSeparator := '.';  {Indiferent de setarile din sistem, separatorul zecimal va fi '.'}
+  FormatSettings.ShortTimeFormat := 'mm:ss';
+  FormatSettings.LongTimeFormat := 'hh:mm:ss';
+
 end.

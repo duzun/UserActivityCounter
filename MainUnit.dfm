@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 755
-  Top = 127
+  Left = 0
+  Top = 4
   Width = 310
   Height = 234
   BorderIcons = [biSystemMenu, biMinimize]
@@ -247,19 +247,29 @@ object Form1: TForm1
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 181
-    Width = 302
+    Top = 177
+    Width = 294
     Height = 19
     Panels = <
       item
         Width = 50
       end
       item
-        Width = 100
+        Text = 'Active time'
+        Width = 59
       end
       item
+        Text = 'Idle time'
+        Width = 59
+      end
+      item
+        Text = 'duzun.icasa.md/programming/pascal/delphi.html'
         Width = 50
       end>
+    ParentShowHint = False
+    ShowHint = True
+    OnMouseDown = StatusBar1MouseDown
+    OnMouseMove = StatusBar1MouseMove
   end
   object BSetI: TButton
     Left = 216

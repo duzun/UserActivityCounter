@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls,
-  UserAcReg, StdCtrls, ActnList, Graph, ComCtrls, ShellApi, TrayIcon;
+  UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon;
 
 const WM_ICONTRAY = WM_USER + 1;
 
@@ -48,6 +48,10 @@ type
     procedure ShowFromTrayExecute(Sender: TObject);
     procedure TrayMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure StatusBar1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
   protected
     procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
@@ -61,6 +65,9 @@ type
     lt, lt_: DWord; // LastTick
     _Idle: Boolean;
     StartDate: TDateTime;
+
+    _toHide: boolean;
+    
   public
     { Public declarations }
     InactiveTime: ULong;
@@ -76,7 +83,7 @@ var
 
 implementation
 
-uses DateUtils;
+uses DateUtils, Math;
 
 {$R *.dfm}
 
@@ -84,8 +91,23 @@ function MSec2StrTime(msec:ULong):string;
 var d: TDateTime;
 begin
    d := msec / MSecsPerDay;
-   if d >= 1 then Result := DateTimeToStr(d)
-             else Result := TimeToStr(d);
+   Result := '';
+   if d >= 1 then Result := IntToStr(Floor(d)) + '-';
+   Result := Result + TimeToStr(d, FormatSettings);
+end;
+
+function OnWhichPanel(Sender: TStatusBar; X: integer): integer;
+var i, n: integer;
+begin
+   i := 0;
+   Result := 0;
+   n := Sender.Panels.Count;
+   while Result < n do begin
+      inc(i, Sender.Panels[Result].Width);
+      if x < i then Exit;
+      inc(Result);
+   end;
+   dec(Result);
 end;
 
 procedure TForm1.FormKeyPress(Sender: TObject; var Key: Char);
@@ -101,6 +123,8 @@ begin
   TrayIcon.Hint := Caption;
   TrayIcon.OnMouseDown := TrayMouseDown;
 
+   _toHide := ParamStr(1) = '/min';
+        
    IdleTimeout   := 5*60*1000; // 5 min.
    FormCaptStr   := Caption + ': ';
    _Idle := false;
@@ -121,6 +145,33 @@ begin
    StartDate := Now;
 
    ShowInfoExecute(Sender);
+end;
+
+procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
+var fn: string;
+    fh: integer;
+    buf: string;
+const ln = #13#10;
+begin
+  OnStateChangeExecute(Sender);
+  OnStateChange_Execute(Sender);
+  if (ActiveTime < 1000) and (ActiveTime_ < 1000) then Exit;
+  fn := ChangeFileExt(Application.ExeName, '.log');
+  fh := FileOpen(fn, fmOpenReadWrite or fmShareDenyNone);
+  if fh <= 0 then fh := FileCreate(fn);
+  if fh <= 0 then Exit;
+  FileSeek(fh, 0, 2);
+  buf := ' - - -' + ln +
+         '| ' + DateTimeToStr(StartDate) + ' |' + ln +
+         'Active: ' + MSec2StrTime(ActiveTime_ ) + ln +
+         'Idle  : ' + MSec2StrTime(InactiveTime_ ) + ln +
+         'Action: ' + MSec2StrTime(ActiveTime ) + ln +
+         'Total : ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
+         '| ' + DateTimeToStr(Now) + ' |' + ln ;
+
+  FileWrite(fh, PAnsiChar(buf)^, length(buf));
+
+  FileClose(fh);
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
@@ -144,6 +195,11 @@ begin
       i := UAInactiveTimeout shr 1;
       if i = 0 then inc(i);
       (Sender as TTimer).Interval := i;
+   end;
+   
+   if _toHide then begin
+      _toHide := false;
+      Hide;      
    end;
 end;
 
@@ -200,9 +256,14 @@ begin
    Caption := Format(statestr + ': %0.3f :: ' + FormCaptStr, [i/1000]) ;
 
    i := tk - lt_;
-   if LastState_ then statestr := 'Idle' else statestr := 'Active';
+   if LastState_ then begin
+      statestr := 'Idle';
+      StatusBar1.Panels[2].Text := 'I:'+MSec2StrTime(i);
+   end else begin
+      statestr := 'Active';
+      StatusBar1.Panels[1].Text := 'A:'+MSec2StrTime(i);
+   end;
    StatusBar1.Panels[0].Text := statestr;
-   StatusBar1.Panels[1].Text := TimeToStr(i / MSecsPerDay);
 end;
 
 procedure TForm1.EITOChange(Sender: TObject);
@@ -227,36 +288,6 @@ begin
       Self.Color := clSkyBlue;
    end;
 end;
-
-
-procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
-var fn: string;
-    fh: integer;
-    buf: string;
-const ln = #13#10;
-begin
-  OnStateChangeExecute(Sender);
-  OnStateChange_Execute(Sender);
-  if (ActiveTime < 1000) and (ActiveTime_ < 1000) then Exit;
-  fn := ChangeFileExt(Application.ExeName, '.log');
-  fh := FileOpen(fn, fmOpenReadWrite or fmShareDenyNone);
-  if fh <= 0 then fh := FileCreate(fn);
-  if fh <= 0 then Exit;
-  FileSeek(fh, 0, 2);
-  buf := '';
-  buf := '~ ' + DateTimeToStr(StartDate) + ln +
-         'Idle time  : ' + MSec2StrTime(InactiveTime_ ) + ln +
-         'Active time: ' + MSec2StrTime(ActiveTime_ ) + ln +
-         'Real Active: ' + MSec2StrTime(ActiveTime ) + ln +
-         'Total:       ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
-         '~ ' + DateTimeToStr(Now) + ln +
-         ' * * * ' + ln;
-
-  FileWrite(fh, PAnsiChar(buf)^, length(buf));
-
-  FileClose(fh);
-end;
-
 
 procedure TForm1.TrayMessage(var Msg: TMessage);
 begin
@@ -311,6 +342,35 @@ begin
       Self.BringToFront;
     end;
   end;
+end;
+
+procedure TForm1.StatusBar1MouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var i: integer;
+    s: string;
+begin
+  i := OnWhichPanel(Sender as TStatusBar, x);
+  s := 'http://' + TStatusBar(Sender).Panels[i].Text;
+  case i of
+    0:;
+    1:;
+    2:;
+    3: ShellExecute(Application.Handle, 'open', PChar(s), nil, nil, 1);
+  end;
+end;
+
+procedure TForm1.StatusBar1MouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
+var i: integer;
+begin
+  i := OnWhichPanel(Sender as TStatusBar, x);
+  case i of
+    0: TStatusBar(Sender).Hint := TStatusBar(Sender).Panels[i].Text;
+    1: TStatusBar(Sender).Hint := 'Last active session lease time';
+    2: TStatusBar(Sender).Hint := 'Last idle session lease time';
+    3: TStatusBar(Sender).Hint := 'Author';
+  end;
+
 end;
 
 end.
