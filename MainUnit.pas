@@ -12,47 +12,53 @@ const WM_ICONTRAY = WM_USER + 1;
 type
   TForm1 = class(TForm)
     Timer1: TTimer;
-    LAt: TLabel;
-    LIt: TLabel;
+    LBusy: TLabel;
+    LIdle: TLabel;
     ActionList1: TActionList;
     ShowInfo: TAction;
     Label1: TLabel;
     Label2: TLabel;
     LITO: TLabel;
-    LAt_: TLabel;
-    LIt_: TLabel;
+    LPresent: TLabel;
+    LAbsent: TLabel;
     Label5: TLabel;
     Label6: TLabel;
-    OnStateChange_: TAction;
+    OnAbsentChange: TAction;
     EITO: TEdit;
-    Label7: TLabel;
     Label3: TLabel;
     Label4: TLabel;
-    Label8: TLabel;
     StatusBar1: TStatusBar;
-    BSetI: TButton;
-    OnStateChange: TAction;
+    OnBusyChange: TAction;
     SetIdle: TAction;
     HideToTray: TAction;
     ShowFromTray: TAction;
+    OnPresentChange: TAction;
+    OnIdleChange: TAction;
+    OnStateChange: TAction;
+    LBusyL: TLabel;
+    LIdleL: TLabel;
+    lPresentL: TLabel;
+    LAbsentL: TLabel;
     procedure Timer1Timer(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure FormKeyPress(Sender: TObject; var Key: Char);
     procedure ShowInfoExecute(Sender: TObject);
     procedure EITOChange(Sender: TObject);
-    procedure OnStateChange_Execute(Sender: TObject);
-    procedure OnStateChangeExecute(Sender: TObject);
+    procedure OnAbsentChangeExecute(Sender: TObject);
+    procedure OnBusyChangeExecute(Sender: TObject);
     procedure SetIdleExecute(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure HideToTrayExecute(Sender: TObject);
     procedure ShowFromTrayExecute(Sender: TObject);
-    procedure TrayMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure StatusBar1MouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer);
+    procedure TrayMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure StatusBar1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure FormDestroy(Sender: TObject);
+    procedure OnPresentChangeExecute(Sender: TObject);
+    procedure OnIdleChangeExecute(Sender: TObject);
+    procedure OnStateChangeExecute(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure FormClick(Sender: TObject);
   protected
     procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
@@ -61,9 +67,6 @@ type
     TrayIcon: TTrayIcon;
 
     FormCaptStr: String;
-    tk: DWord;   // TickCount
-    litk: DWord; // LastInputTickCount
-    lt, lt_: DWord; // LastTick
     _Idle: Boolean;
     StartDate: TDateTime;
 
@@ -71,12 +74,7 @@ type
     
   public
     { Public declarations }
-    InactiveTime: ULong;
-    InactiveTime_: ULong;
-    ActiveTime: ULong;
-    ActiveTime_: ULong;
     IdleTimeout: DWord;
-    LastState, LastState_: Boolean; // true - active, false - idle
 
     UAC: TUserActivityCounter;
   end;
@@ -100,6 +98,39 @@ begin
    Result := Result + TimeToStr(d, FormatSettings);
 end;
 
+
+procedure LoadCSVFile (FileName: String; separator: char);
+var f: TextFile;
+    s1, s2: string;
+    i, j: integer;
+begin
+     i := 0;
+     AssignFile (f, FileName);
+     Reset(f);
+     while not eof(f) do
+      begin
+           readln (f, s1);
+           i := i + 1;
+           j := 0;
+           while pos(separator, s1)<>0 do
+            begin
+                 s2 := copy(s1,1,pos(separator, s1)-1);
+                 j := j + 1;
+                 Delete(s1, 1, pos(separator, S1));
+//                 StringGrid1.Cells[j-1, i-1] := s2;
+            end;
+           if pos (separator, s1)=0 then
+            begin
+                 j := j + 1;
+//                 StringGrid1.Cells[j-1, i-1] := s1;
+            end;
+//           StringGrid1.ColCount := j;
+//           StringGRid1.RowCount := i+1;
+      end;
+     CloseFile(f);
+end;
+
+ 
 function OnWhichPanel(Sender: TStatusBar; X: integer): integer;
 var i, n: integer;
 begin
@@ -114,13 +145,6 @@ begin
    dec(Result);
 end;
 
-procedure TForm1.FormKeyPress(Sender: TObject; var Key: Char);
-begin
-   case Key of
-     #27: Self.Close;
-   end;  
-end;
-
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   TrayIcon := TTrayIcon.Create(Self);
@@ -130,24 +154,18 @@ begin
    _toHide := ParamStr(1) = '/min';
 
    UAC := TUserActivityCounter.Create;
+   UAC.AbsentTimeout := 300;
+   UAC.OnBusy := OnBusyChangeExecute;
+   UAC.OnIdle := OnIdleChangeExecute;
+   UAC.OnPresent := OnPresentChangeExecute;
+   UAC.OnAbsent  := OnAbsentChangeExecute;
+   UAC.OnStateChange := OnStateChangeExecute;
+
+   StartDate := Now;
 
    EITOChange(EITO);
    FormCaptStr   := Caption + ': ';
    _Idle := false;
-
-   litk          := GetLastInputTick;
-   tk            := GetTickCount;
-
-   ActiveTime    := 0;
-   ActiveTime_   := 0;
-   InactiveTime  := 0;
-   InactiveTime_ := 0;
-   LastState     := GetIdleState;
-   LastState_    := LastState;
-   lt      := tk;
-   lt_     := tk;
-
-   StartDate := Now;
 
    ShowInfoExecute(Sender);
 end;
@@ -159,10 +177,8 @@ var fn: string;
 const ln = #13#10;
 begin
   UAC.Update;
-  
-  OnStateChangeExecute(Sender);
-  OnStateChange_Execute(Sender);
-  if (ActiveTime < 1000) and (ActiveTime_ < 1000) then Exit;
+
+  if (UAC.BusyTime < 1000) then Exit;
   fn := ChangeFileExt(Application.ExeName, '.log');
   fh := FileOpen(fn, fmOpenReadWrite or fmShareDenyNone);
   if fh <= 0 then fh := FileCreate(fn);
@@ -170,8 +186,8 @@ begin
   FileSeek(fh, 0, 2);
   buf := ' - - -' + ln +
          '| ' + DateTimeToStr(StartDate) + ' |' + ln +
-         'Present: ' + MSec2StrTime(ActiveTime_ ) + ln +
-         'Absent : ' + MSec2StrTime(InactiveTime_ ) + ln +
+         'Present: ' + MSec2StrTime(UAC.PresentTime) + ln +
+         'Absent : ' + MSec2StrTime(UAC.AbsentTime ) + ln +
          'Busy   : ' + MSec2StrTime(UAC.BusyTime) + ln +
          'Total  : ' + MSec2StrTime(UAC.TotalTime) + ln +
          '| ' + DateTimeToStr(Now) + ' |' + ln ;
@@ -179,18 +195,34 @@ begin
   FileWrite(fh, PAnsiChar(buf)^, length(buf));
 
   FileClose(fh);
+
+end;
+
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(UAC)
+end;
+
+procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+   case Key of
+   27: Self.Close;
+   32: if ssCtrl in Shift then begin
+          EITO.Visible := not EITO.Visible;
+       end;
+   end;
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
 var i:dword;
     schg: boolean;
 begin
+   if UAC = nil then Exit;
+   
    schg := UAC.Update;
    
-   litk := GetLastInputTick;
-   tk   := GetTickCount;
-
-   if schg or boolean(UAC.Busy) or ((tk shr 5) and 2 = 0) then
+   if schg or UAC.Busy or ((GetTickCount shr 5) and 2 = 0) then
       ShowInfoExecute(Sender);
 
    // Timer adjustment
@@ -199,77 +231,59 @@ begin
       if i = 0 then inc(i);
       (Sender as TTimer).Interval := i;
    end;
-   
+
    if _toHide then begin
       _toHide := false;
-      Hide;      
+      Hide;
    end;
 end;
 
-procedure TForm1.OnStateChangeExecute(Sender: TObject);
+procedure TForm1.OnBusyChangeExecute(Sender: TObject);
 var i: DWord;
 begin
-      if UAC.Busy then begin // -> active
-        if not _Idle then Self.Color := clSkyBlue;
-      end else begin          // -> idle
-        if not _Idle then Self.Color := clMoneyGreen;
-      end;
+   Self.Color := clSkyBlue;
 end;
 
-procedure TForm1.OnStateChange_Execute(Sender: TObject);
-var i: DWord;
+procedure TForm1.OnIdleChangeExecute(Sender: TObject);
 begin
-      if _Idle and UAC.Absent then Exit;
+    Self.Color := clMoneyGreen;
+end;
 
-      if LastState_ then begin // -> active
-        inc(InactiveTime_, litk - lt_);
-        inc(ActiveTime_, tk - litk);
-      end else begin          // -> idle
-        if lt_ < litk then i := litk else i := lt_;
-        inc(ActiveTime_, i - lt_);
-        inc(InactiveTime_, tk - i);
-        Self.Color := clYellow;
-      end;
-      lt_ := tk;
-      LastState_ := not LastState_;
+procedure TForm1.OnPresentChangeExecute(Sender: TObject);
+begin
+   if _Idle then Exit;
+end;
+
+procedure TForm1.OnAbsentChangeExecute(Sender: TObject);
+begin
+    Self.Color := clYellow;
 end;
 
 procedure TForm1.ShowInfoExecute(Sender: TObject);
 var statestr: string;
     i: DWORD;
 begin
-{ Old 
-    if lt < litk then i := litk else i := lt;
-    LIt.Caption    := MSec2StrTime((InactiveTime+tk-i) );
-    LAt.Caption    := MSec2StrTime((ActiveTime+i-lt) );
-    Label3.Caption := MSec2StrTime((InactiveTime+ActiveTime+tk-lt) );
-}
-    LIt.Caption    := MSec2StrTime(UAC.IdleTime);
-    LAt.Caption    := MSec2StrTime(UAC.BusyTime);
-    Label3.Caption := MSec2StrTime(UAC.TotalTime);
+    LBusy.Caption      := MSec2StrTime(UAC.BusyTime);
+    LIdle.Caption      := MSec2StrTime(UAC.IdleTime);
+    LPresent.Caption   := MSec2StrTime(UAC.PresentTime);
+    LAbsent.Caption    := MSec2StrTime(UAC.AbsentTime);
 
-{
-    if lt_ < litk then i := litk else i := lt_;
-    LIt_.Caption   := MSec2StrTime((InactiveTime_+tk-i) );
-    LAt_.Caption   := MSec2StrTime((ActiveTime_+i-lt_) );
-    Label4.Caption := MSec2StrTime((InactiveTime_+ActiveTime_+tk-lt_) );
-}
+    LBusyL.Caption      := MSec2StrTime(UAC.BusyTimeLast);
+    LIdleL.Caption      := MSec2StrTime(UAC.IdleTimeLast);
+    LPresentL.Caption   := MSec2StrTime(UAC.PresentTimeLast);
+    LAbsentL.Caption    := MSec2StrTime(UAC.AbsentTimeLast);
 
-    LIt_.Caption   := MSec2StrTime(UAC.AbsentTime);
-    LAt_.Caption   := MSec2StrTime(UAC.PresentTime);
-    Label4.Caption := IntToStr(UAC.TotalTime);
-
-   i := tk - lt_;
-   if UAC.Present = 0 then begin
+   if not UAC.Present then begin
       statestr := 'Absent';
-      StatusBar1.Panels[2].Text := 'A:'+MSec2StrTime(i);
+      StatusBar1.Panels[2].Text := 'A:'+MSec2StrTime(UAC.AbsentTimeLast);
    end else begin
-      if UAC.Busy = 0 then statestr := 'Idle'
-                      else statestr := 'Busy';
-      StatusBar1.Panels[1].Text := 'P:'+MSec2StrTime(i);
+      if UAC.Busy then statestr := 'Busy'
+                  else statestr := 'Idle';
+      StatusBar1.Panels[1].Text := 'P:'+MSec2StrTime(UAC.PresentTimeLast);
    end;
    StatusBar1.Panels[0].Text := statestr;
-   i := tk - lt;
+   
+   if UAC.Busy then i := UAC.BusyTimeLast else i := UAC.IdleTimeLast;
    Caption := Format(statestr + ': %0.3f :: ' + FormCaptStr, [i/1000]) ;
 
 end;
@@ -277,7 +291,7 @@ end;
 procedure TForm1.EITOChange(Sender: TObject);
 var t: string;
 begin
-   t := (Sender as TCustomEdit).Text;
+   t := Trim((Sender as TCustomEdit).Text);
    if t = '' then t := '0';
    IdleTimeout := StrToInt(t)*1000;
    UAC.AbsentTimeout := IdleTimeout;
@@ -285,15 +299,12 @@ end;
 
 procedure TForm1.SetIdleExecute(Sender: TObject);
 begin
-  OnStateChangeExecute(Sender);
-  OnStateChange_Execute(Sender);
+   UAC.Update;
 
    _Idle := not _Idle;
    if _Idle then begin
-      BSetI.Caption := 'Set Active';
       Self.Color := clYellow;
    end else begin
-      BSetI.Caption := 'Set Idle';
       Self.Color := clSkyBlue;
    end;
 end;
@@ -334,27 +345,25 @@ begin
    WindowState := wsNormal;   
 end;
 
-procedure TForm1.TrayMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TForm1.TrayMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   case Button of
     mbLeft:
-    begin
-      ShowFromTrayExecute(Self);
-    end;
+        begin
+          ShowFromTrayExecute(Self);
+        end;
     mbRight:
-    begin
-      HideToTrayExecute(Self);
-    end;
+        begin
+          HideToTrayExecute(Self);
+        end;
     mbMiddle:
-    begin
-      Self.BringToFront;
-    end;
+        begin
+          Self.BringToFront;
+        end;
   end;
 end;
 
-procedure TForm1.StatusBar1MouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TForm1.StatusBar1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var i: integer;
     s: string;
 begin
@@ -368,8 +377,7 @@ begin
   end;
 end;
 
-procedure TForm1.StatusBar1MouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: Integer);
+procedure TForm1.StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var i: integer;
 begin
   i := OnWhichPanel(Sender as TStatusBar, x);
@@ -382,9 +390,22 @@ begin
 
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TForm1.OnStateChangeExecute(Sender: TObject);
 begin
-   UAC.Free;
+{
+    case UAC.State of
+       0:;
+       1:;
+       2:;
+       else
+    end;
+}
+end;
+
+
+procedure TForm1.FormClick(Sender: TObject);
+begin
+   EITO.Visible := false;
 end;
 
 end.

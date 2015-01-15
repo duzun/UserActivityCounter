@@ -1,15 +1,15 @@
 object Form1: TForm1
-  Left = 236
-  Top = 159
-  Width = 310
-  Height = 234
+  Left = 1091
+  Top = 179
+  Width = 320
+  Height = 250
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'User Activity Counter'
   Color = clRed
-  Constraints.MaxHeight = 234
-  Constraints.MaxWidth = 310
-  Constraints.MinHeight = 234
-  Constraints.MinWidth = 310
+  Constraints.MaxHeight = 250
+  Constraints.MaxWidth = 320
+  Constraints.MinHeight = 250
+  Constraints.MinWidth = 320
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -103,19 +103,20 @@ object Form1: TForm1
   OldCreateOrder = False
   Position = poScreenCenter
   Scaled = False
+  OnClick = FormClick
   OnClose = FormClose
   OnCreate = FormCreate
   OnDblClick = HideToTrayExecute
   OnDestroy = FormDestroy
-  OnKeyPress = FormKeyPress
-  PixelsPerInch = 96
+  OnKeyDown = FormKeyDown
+  PixelsPerInch = 120
   TextHeight = 13
-  object LAt: TLabel
-    Left = 96
-    Top = 72
-    Width = 27
+  object LBusy: TLabel
+    Left = 65
+    Top = 93
+    Width = 51
     Height = 24
-    Caption = 'LAt'
+    Caption = 'LBusy'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -19
@@ -123,12 +124,12 @@ object Form1: TForm1
     Font.Style = []
     ParentFont = False
   end
-  object LIt: TLabel
-    Left = 96
-    Top = 104
-    Width = 18
+  object LIdle: TLabel
+    Left = 65
+    Top = 125
+    Width = 40
     Height = 24
-    Caption = 'LIt'
+    Caption = 'LIdle'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -19
@@ -138,21 +139,21 @@ object Form1: TForm1
   end
   object Label1: TLabel
     Left = 8
-    Top = 80
+    Top = 101
     Width = 29
     Height = 13
     Caption = 'Busy: '
   end
   object Label2: TLabel
     Left = 8
-    Top = 112
+    Top = 133
     Width = 23
     Height = 13
     Caption = 'Idle: '
   end
   object LITO: TLabel
     Left = 120
-    Top = 144
+    Top = 165
     Width = 32
     Height = 20
     Caption = '        '
@@ -163,12 +164,12 @@ object Form1: TForm1
     Font.Style = []
     ParentFont = False
   end
-  object LAt_: TLabel
-    Left = 96
-    Top = 8
-    Width = 27
+  object LPresent: TLabel
+    Left = 65
+    Top = 29
+    Width = 74
     Height = 24
-    Caption = 'LAt'
+    Caption = 'LPresent'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -19
@@ -176,12 +177,12 @@ object Form1: TForm1
     Font.Style = []
     ParentFont = False
   end
-  object LIt_: TLabel
-    Left = 96
-    Top = 40
-    Width = 18
+  object LAbsent: TLabel
+    Left = 65
+    Top = 61
+    Width = 69
     Height = 24
-    Caption = 'LIt'
+    Caption = 'LAbsent'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -19
@@ -191,65 +192,98 @@ object Form1: TForm1
   end
   object Label5: TLabel
     Left = 8
-    Top = 16
+    Top = 37
     Width = 42
     Height = 13
     Caption = 'Present: '
   end
   object Label6: TLabel
     Left = 8
-    Top = 48
+    Top = 69
     Width = 39
     Height = 13
     Caption = 'Absent: '
   end
-  object Label7: TLabel
-    Left = 176
-    Top = 136
-    Width = 25
-    Height = 16
-    Caption = 'sec.'
+  object Label3: TLabel
+    Left = 179
+    Top = 7
+    Width = 20
+    Height = 13
+    Caption = 'Last'
+  end
+  object Label4: TLabel
+    Left = 65
+    Top = 7
+    Width = 24
+    Height = 13
+    Caption = 'Total'
+  end
+  object LBusyL: TLabel
+    Left = 179
+    Top = 93
+    Width = 61
+    Height = 24
+    Caption = 'LBusyL'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
-    Font.Height = -13
+    Font.Height = -19
     Font.Name = 'MS Sans Serif'
     Font.Style = []
     ParentFont = False
   end
-  object Label3: TLabel
-    Left = 208
-    Top = 96
-    Width = 32
-    Height = 13
-    Caption = 'Label3'
+  object LIdleL: TLabel
+    Left = 179
+    Top = 125
+    Width = 50
+    Height = 24
+    Caption = 'LIdleL'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    ParentFont = False
   end
-  object Label4: TLabel
-    Left = 208
-    Top = 32
-    Width = 32
-    Height = 13
-    Caption = 'Label4'
+  object lPresentL: TLabel
+    Left = 179
+    Top = 29
+    Width = 84
+    Height = 24
+    Caption = 'LPresentL'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    ParentFont = False
   end
-  object Label8: TLabel
-    Left = 8
-    Top = 144
-    Width = 80
-    Height = 13
-    Caption = 'Absent Timeout: '
+  object LAbsentL: TLabel
+    Left = 179
+    Top = 61
+    Width = 79
+    Height = 24
+    Caption = 'LAbsentL'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -19
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    ParentFont = False
   end
   object EITO: TEdit
-    Left = 96
-    Top = 136
-    Width = 73
+    Left = 8
+    Top = 7
+    Width = 49
     Height = 21
     TabOrder = 0
     Text = '300'
+    Visible = False
     OnChange = EITOChange
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 177
-    Width = 294
+    Top = 186
+    Width = 302
     Height = 19
     Panels = <
       item
@@ -272,32 +306,38 @@ object Form1: TForm1
     OnMouseDown = StatusBar1MouseDown
     OnMouseMove = StatusBar1MouseMove
   end
-  object BSetI: TButton
-    Left = 216
-    Top = 135
-    Width = 67
-    Height = 25
-    Action = SetIdle
-    TabOrder = 2
-  end
   object Timer1: TTimer
     Interval = 1
     OnTimer = Timer1Timer
-    Left = 248
+    Left = 216
+    Top = 65533
   end
   object ActionList1: TActionList
-    Left = 216
+    Left = 248
+    Top = 65533
     object ShowInfo: TAction
       Caption = 'ShowInfo'
       OnExecute = ShowInfoExecute
     end
-    object OnStateChange_: TAction
-      Caption = 'OnStateChange_'
-      OnExecute = OnStateChange_Execute
-    end
     object OnStateChange: TAction
       Caption = 'OnStateChange'
       OnExecute = OnStateChangeExecute
+    end
+    object OnPresentChange: TAction
+      Caption = 'OnPresentChange'
+      OnExecute = OnPresentChangeExecute
+    end
+    object OnAbsentChange: TAction
+      Caption = 'OnAbsentChange'
+      OnExecute = OnAbsentChangeExecute
+    end
+    object OnBusyChange: TAction
+      Caption = 'OnBusyChange'
+      OnExecute = OnBusyChangeExecute
+    end
+    object OnIdleChange: TAction
+      Caption = 'OnIdleChange'
+      OnExecute = OnIdleChangeExecute
     end
     object SetIdle: TAction
       Caption = 'Set Idle'

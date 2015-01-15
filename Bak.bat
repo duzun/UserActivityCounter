@@ -38,7 +38,7 @@ rem --------------------------------------------------------------------------
     Echo.
     Echo.
     Echo M: Make setting files
-    Echo U: Copy %bak_main% to upper dirs
+    Echo U: Copy "%bak_main%" to upper dirs
 REM     Echo I: Init vars
 REM     Echo S: Show vars
 REM     Echo V: Cleanse vars
@@ -84,8 +84,8 @@ rem --------------------------------------------------------------------------
     set bak_nm=%~nx0
     set bak_dn=%~n0
     set bak_rt=%~dp0
-    if '%1'=='/meup' %bak_main% /goto meup
-    set bak_func=call %bak_main% /goto
+    if '%1'=='/meup' "%bak_main%" /goto meup
+    set bak_func=call "%bak_main%" /goto
     set my_baks=bak_ext, bak_upx, bak_dir, bak_dsk, bak_dbl_dir, bak_dbl, bak_net, bak_clean
     set bak_timeout=400
     set bak_log=bak_log.txt
@@ -145,7 +145,7 @@ rem --------------------------------------------------------------------------
     if "%3" == "." (
       If not exist .\%bak_dn%\. %bak_func% mkfiles .
       if not exist ".\%bak_dn%\%bak_dir%\." md ".\%bak_dn%\%bak_dir%"
-      if not exist ".\%bak_dn%\%bak_dir%\." %bak_func% error Unable to create dir: \n %bak_rt%\%bak_dn%\%bak_dir%\.
+      if not exist ".\%bak_dn%\%bak_dir%\." %bak_func% error Unable to create dir: \n "%bak_rt%"\%bak_dn%\%bak_dir%\.
     
           
       Echo. & Echo  ~ Backing Up Files . . . ~
@@ -357,3 +357,4 @@ rem exit
 rem --------------------------------------------------------------------------
 :e
 REM Updated: 03.03.2011, 13:10:31,03  
+REM Updated: 09.05.2012, 23:59:35,64  
