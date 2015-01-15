@@ -1,6 +1,6 @@
 object Form1: TForm1
   Left = 0
-  Top = 4
+  Top = 0
   Width = 310
   Height = 234
   BorderIcons = [biSystemMenu, biMinimize]
@@ -106,6 +106,7 @@ object Form1: TForm1
   OnClose = FormClose
   OnCreate = FormCreate
   OnDblClick = HideToTrayExecute
+  OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
   PixelsPerInch = 96
   TextHeight = 13
@@ -138,16 +139,16 @@ object Form1: TForm1
   object Label1: TLabel
     Left = 8
     Top = 80
-    Width = 78
+    Width = 29
     Height = 13
-    Caption = 'Active (current): '
+    Caption = 'Busy: '
   end
   object Label2: TLabel
     Left = 8
     Top = 112
-    Width = 86
+    Width = 23
     Height = 13
-    Caption = 'Inactive (current): '
+    Caption = 'Idle: '
   end
   object LITO: TLabel
     Left = 120
@@ -191,16 +192,16 @@ object Form1: TForm1
   object Label5: TLabel
     Left = 8
     Top = 16
-    Width = 36
+    Width = 42
     Height = 13
-    Caption = 'Active: '
+    Caption = 'Present: '
   end
   object Label6: TLabel
     Left = 8
     Top = 48
-    Width = 44
+    Width = 39
     Height = 13
-    Caption = 'Inactive: '
+    Caption = 'Absent: '
   end
   object Label7: TLabel
     Left = 176
@@ -232,9 +233,9 @@ object Form1: TForm1
   object Label8: TLabel
     Left = 8
     Top = 144
-    Width = 64
+    Width = 80
     Height = 13
-    Caption = 'Idle Timeout: '
+    Caption = 'Absent Timeout: '
   end
   object EITO: TEdit
     Left = 96
@@ -255,11 +256,11 @@ object Form1: TForm1
         Width = 50
       end
       item
-        Text = 'Active time'
+        Text = 'Present time'
         Width = 59
       end
       item
-        Text = 'Idle time'
+        Text = 'Absent time'
         Width = 59
       end
       item

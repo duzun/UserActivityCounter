@@ -52,6 +52,7 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X,
       Y: Integer);
+    procedure FormDestroy(Sender: TObject);
   protected
     procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
@@ -76,10 +77,13 @@ type
     ActiveTime_: ULong;
     IdleTimeout: DWord;
     LastState, LastState_: Boolean; // true - active, false - idle
+
+    UAC: TUserActivityCounter;
   end;
 
 var
   Form1: TForm1;
+
 
 implementation
 
@@ -124,7 +128,9 @@ begin
   TrayIcon.OnMouseDown := TrayMouseDown;
 
    _toHide := ParamStr(1) = '/min';
-        
+
+   UAC := TUserActivityCounter.Create;
+
    IdleTimeout   := 5*60*1000; // 5 min.
    FormCaptStr   := Caption + ': ';
    _Idle := false;
@@ -163,10 +169,10 @@ begin
   FileSeek(fh, 0, 2);
   buf := ' - - -' + ln +
          '| ' + DateTimeToStr(StartDate) + ' |' + ln +
-         'Active: ' + MSec2StrTime(ActiveTime_ ) + ln +
-         'Idle  : ' + MSec2StrTime(InactiveTime_ ) + ln +
-         'Action: ' + MSec2StrTime(ActiveTime ) + ln +
-         'Total : ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
+         'Present: ' + MSec2StrTime(ActiveTime_ ) + ln +
+         'Absent : ' + MSec2StrTime(InactiveTime_ ) + ln +
+         'Busy   : ' + MSec2StrTime(ActiveTime ) + ln +
+         'Total  : ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
          '| ' + DateTimeToStr(Now) + ' |' + ln ;
 
   FileWrite(fh, PAnsiChar(buf)^, length(buf));
@@ -178,6 +184,8 @@ procedure TForm1.Timer1Timer(Sender: TObject);
 var i:dword;
     schg: boolean;
 begin
+   UAC.Update;
+   
    litk := GetLastInputTick;
    tk   := GetTickCount;
 
@@ -243,12 +251,13 @@ var statestr: string;
     i: DWORD;
 begin
     if lt < litk then i := litk else i := lt;
-    LIt.Caption := MSec2StrTime((InactiveTime+tk-i) );
-    LAt.Caption := MSec2StrTime((ActiveTime+i-lt) );
+    LIt.Caption    := MSec2StrTime((InactiveTime+tk-i) );
+    LAt.Caption    := MSec2StrTime((ActiveTime+i-lt) );
     Label3.Caption := MSec2StrTime((InactiveTime+ActiveTime+tk-lt) );
+    
     if lt_ < litk then i := litk else i := lt_;
-    LIt_.Caption := MSec2StrTime((InactiveTime_+tk-i) );
-    LAt_.Caption := MSec2StrTime((ActiveTime_+i-lt_) );
+    LIt_.Caption   := MSec2StrTime((InactiveTime_+tk-i) );
+    LAt_.Caption   := MSec2StrTime((ActiveTime_+i-lt_) );
     Label4.Caption := MSec2StrTime((InactiveTime_+ActiveTime_+tk-lt_) );
 
    i := tk - lt;
@@ -257,11 +266,12 @@ begin
 
    i := tk - lt_;
    if LastState_ then begin
-      statestr := 'Idle';
-      StatusBar1.Panels[2].Text := 'I:'+MSec2StrTime(i);
+      statestr := 'Absent';
+      StatusBar1.Panels[2].Text := 'A:'+MSec2StrTime(i);
    end else begin
-      statestr := 'Active';
-      StatusBar1.Panels[1].Text := 'A:'+MSec2StrTime(i);
+      if LastState then statestr := 'Idle'
+                   else statestr := 'Busy';
+      StatusBar1.Panels[1].Text := 'P:'+MSec2StrTime(i);
    end;
    StatusBar1.Panels[0].Text := statestr;
 end;
@@ -371,6 +381,11 @@ begin
     3: TStatusBar(Sender).Hint := 'Author';
   end;
 
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+   UAC.Free;
 end;
 
 end.
