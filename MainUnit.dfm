@@ -243,7 +243,7 @@ object Form1: TForm1
     Width = 73
     Height = 21
     TabOrder = 0
-    Text = '0'
+    Text = '300'
     OnChange = EITOChange
   end
   object StatusBar1: TStatusBar

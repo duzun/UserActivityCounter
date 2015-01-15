@@ -131,7 +131,7 @@ begin
 
    UAC := TUserActivityCounter.Create;
 
-   IdleTimeout   := 5*60*1000; // 5 min.
+   EITOChange(EITO);
    FormCaptStr   := Caption + ': ';
    _Idle := false;
 
@@ -147,7 +147,6 @@ begin
    lt      := tk;
    lt_     := tk;
 
-   EITO.Text := IntToStr(IdleTimeout div 1000);
    StartDate := Now;
 
    ShowInfoExecute(Sender);
@@ -159,6 +158,8 @@ var fn: string;
     buf: string;
 const ln = #13#10;
 begin
+  UAC.Update;
+  
   OnStateChangeExecute(Sender);
   OnStateChange_Execute(Sender);
   if (ActiveTime < 1000) and (ActiveTime_ < 1000) then Exit;
@@ -171,8 +172,8 @@ begin
          '| ' + DateTimeToStr(StartDate) + ' |' + ln +
          'Present: ' + MSec2StrTime(ActiveTime_ ) + ln +
          'Absent : ' + MSec2StrTime(InactiveTime_ ) + ln +
-         'Busy   : ' + MSec2StrTime(ActiveTime ) + ln +
-         'Total  : ' + MSec2StrTime(InactiveTime_+ActiveTime_ ) + ln +
+         'Busy   : ' + MSec2StrTime(UAC.BusyTime) + ln +
+         'Total  : ' + MSec2StrTime(UAC.TotalTime) + ln +
          '| ' + DateTimeToStr(Now) + ' |' + ln ;
 
   FileWrite(fh, PAnsiChar(buf)^, length(buf));
@@ -184,7 +185,7 @@ procedure TForm1.Timer1Timer(Sender: TObject);
 var i:dword;
     schg: boolean;
 begin
-   UAC.Update;
+   schg := UAC.Update;
    
    litk := GetLastInputTick;
    tk   := GetTickCount;
@@ -195,7 +196,7 @@ begin
    if not _Idle and LastInputStateChanged(LastState_, lt_, IdleTimeout) then
      OnStateChange_Execute(Sender);
 
-   if schg or not LastState or ((tk shr 5) and 2 = 0) then
+   if schg or boolean(UAC.Busy) or ((tk shr 5) and 2 = 0) then
       ShowInfoExecute(Sender);
 
    // Timer adjustment
@@ -250,15 +251,26 @@ procedure TForm1.ShowInfoExecute(Sender: TObject);
 var statestr: string;
     i: DWORD;
 begin
+{ Old 
     if lt < litk then i := litk else i := lt;
     LIt.Caption    := MSec2StrTime((InactiveTime+tk-i) );
     LAt.Caption    := MSec2StrTime((ActiveTime+i-lt) );
     Label3.Caption := MSec2StrTime((InactiveTime+ActiveTime+tk-lt) );
-    
+}
+    LIt.Caption    := MSec2StrTime(UAC.IdleTime);
+    LAt.Caption    := MSec2StrTime(UAC.BusyTime);
+    Label3.Caption := MSec2StrTime(UAC.TotalTime);
+
+{
     if lt_ < litk then i := litk else i := lt_;
     LIt_.Caption   := MSec2StrTime((InactiveTime_+tk-i) );
     LAt_.Caption   := MSec2StrTime((ActiveTime_+i-lt_) );
     Label4.Caption := MSec2StrTime((InactiveTime_+ActiveTime_+tk-lt_) );
+}
+
+    LIt_.Caption   := MSec2StrTime(UAC.AbsentTime);
+    LAt_.Caption   := MSec2StrTime(UAC.PresentTime);
+    Label4.Caption := IntToStr(UAC.TotalTime);
 
    i := tk - lt;
    if LastState then statestr := 'Idle' else statestr := 'Active';
@@ -282,6 +294,7 @@ begin
    t := (Sender as TCustomEdit).Text;
    if t = '' then t := '0';
    IdleTimeout := StrToInt(t)*1000;
+   UAC.AbsentTimeout := IdleTimeout;
 end;
 
 procedure TForm1.SetIdleExecute(Sender: TObject);
