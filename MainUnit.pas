@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, Registry,
-  UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon, System.Actions;
+  UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon;
 
 const csv_cell_sep = #09';';
       csv_ln_sep   = #13#10;
@@ -112,7 +112,7 @@ begin
   if fh <= 0 then fh := FileCreate(fn);
   if fh <= 0 then Exit;
   FileSeek(fh, 0, 2);
-  Result := FileWrite(fh, PAnsiChar(buf)^, length(buf));
+  Result := FileWrite(fh, PAnsiChar(UTF8String(buf))^, length(buf));
   FileClose(fh);
 end;
 

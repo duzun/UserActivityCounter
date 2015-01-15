@@ -1,17 +1,17 @@
 object Form1: TForm1
-  Left = 485
-  Top = 211
+  Left = 1519
+  Top = 274
+  Width = 318
+  Height = 249
   AutoSize = True
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSizeToolWin
   Caption = 'User Activity Counter'
-  ClientHeight = 210
-  ClientWidth = 302
   Color = clRed
   Constraints.MaxHeight = 250
   Constraints.MaxWidth = 320
-  Constraints.MinHeight = 250
-  Constraints.MinWidth = 320
+  Constraints.MinHeight = 249
+  Constraints.MinWidth = 318
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -111,7 +111,7 @@ object Form1: TForm1
   OnDblClick = HideToTrayExecute
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
-  PixelsPerInch = 120
+  PixelsPerInch = 96
   TextHeight = 13
   object LBusy: TLabel
     Left = 65
@@ -307,14 +307,13 @@ object Form1: TForm1
         Width = 59
       end
       item
-        Text = 'duzun.icasa.md/programming/pascal/delphi.html'
+        Text = 'github.com/duzun/UserActivityCounter'
         Width = 50
       end>
     ParentShowHint = False
     ShowHint = True
     OnMouseDown = StatusBar1MouseDown
     OnMouseMove = StatusBar1MouseMove
-    ExplicitTop = 181
   end
   object Timer1: TTimer
     Interval = 1

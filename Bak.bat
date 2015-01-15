@@ -3,13 +3,13 @@ rem ----------------------------------------------------------------------------
 rem - ro: Un script pentru crearea si dublarea copiilor de rezerva ale unui proiect.-
 rem - en: A script for creating and doubling of  backup copies of a project.        -
 rem ---------------------------------------------------------------------------------
-rem @Ver 6.1
-rem @Date:   15.12.2010, 21:05
+rem @Ver 6.2
+rem @Date:   15.01.2015, 16:00
 rem @Author: Dumitru Uzun (DUzun.Me)
 REM @Repo:   https://github.com/duzun/Bak.Bat
 rem @Web:    https://duzun.me
 rem --------------------------------------------------------------------------
-REM @Dependencies: UPX.exe, RAR.exe
+REM @Dependencies: UPX.exe, RAR.exe, attrib.exe
 rem --------------------------------------------------------------------------
 if     '%1'=='/goto' goto %2
 if not '%1'=='/goto' goto smain
@@ -21,7 +21,7 @@ rem Defaults
 if "%bak_ext%."    =="." set bak_ext=ppr, prj, dpr, bpr, pas, dcu, ddp, c, h, cpp, php, inc, js, css, bat, cmd, cfg, ini, inf, csv, xls, doc, htm, html, exe, com, dfm, ico
 if "%bak_upx%."    =="." set bak_upx=exe, com, dll, w?x, bpl
 if "%bak_clean%."  =="." set bak_clean=*.ex~, *.~???, *.tmp, *.tds, *.qst, *.fpd, *.sym, *.ilc, *.ild, *.tds, *.ppu
-if "%bak_dir%."    =="." set bak_dir=%date%
+if "%bak_dir%."    =="." set bak_dir=%date:/=-%
 if "%bak_subdirs%."=="." set bak_subdirs=
 if "%bak_dsk%."    =="." set bak_dsk=c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z
 if "%bak_dbl_dir%."=="." set bak_dbl_dir=
@@ -115,9 +115,9 @@ rem --------------------------------------------------------------------------
     %bak_func% bak %3
     Echo. & Echo  ~ Packing files . . . ~
     Echo.
-    start /wait /D.\%bak_dn% /MIN rar -m5 -s a %bak_dir%.rar %bak_dir%
-    if exist .\%bak_dn%\%bak_dir%.rar rd /S /Q .\%bak_dn%\%bak_dir%
-REM     start "Net %bak_dn%" %bak_func% net ".\%bak_dn%\%bak_dir%.rar"
+    start /wait /D.\"%bak_dn%" /MIN rar -m5 -s a "%bak_dir%.rar" "%bak_dir%"
+    if exist ".\%bak_dn%\%bak_dir%.rar" rd /S /Q ".\%bak_dn%\%bak_dir%"
+    REM start "Net %bak_dn%" %bak_func% net ".\%bak_dn%\%bak_dir%.rar"
     goto e
   )
   %bak_func% pak .
@@ -366,5 +366,3 @@ goto del_vars
 rem exit
 rem --------------------------------------------------------------------------
 :e
-REM Updated: 03.03.2011, 13:10:31,03
-REM Updated: Thu 01/15/2015, 13:53:56.94 
