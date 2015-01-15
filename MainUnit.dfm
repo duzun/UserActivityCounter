@@ -1,10 +1,12 @@
 object Form1: TForm1
   Left = 485
   Top = 211
-  Width = 320
-  Height = 250
+  AutoSize = True
   BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsSizeToolWin
   Caption = 'User Activity Counter'
+  ClientHeight = 210
+  ClientWidth = 302
   Color = clRed
   Constraints.MaxHeight = 250
   Constraints.MaxWidth = 320
@@ -109,11 +111,11 @@ object Form1: TForm1
   OnDblClick = HideToTrayExecute
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 13
   object LBusy: TLabel
     Left = 65
-    Top = 130
+    Top = 120
     Width = 51
     Height = 24
     Caption = 'LBusy'
@@ -126,7 +128,7 @@ object Form1: TForm1
   end
   object LIdle: TLabel
     Left = 65
-    Top = 162
+    Top = 152
     Width = 40
     Height = 24
     Caption = 'LIdle'
@@ -139,21 +141,21 @@ object Form1: TForm1
   end
   object Label1: TLabel
     Left = 8
-    Top = 138
+    Top = 128
     Width = 29
     Height = 13
     Caption = 'Busy: '
   end
   object Label2: TLabel
     Left = 8
-    Top = 170
+    Top = 160
     Width = 23
     Height = 13
     Caption = 'Idle: '
   end
   object LPresent: TLabel
     Left = 65
-    Top = 66
+    Top = 56
     Width = 74
     Height = 24
     Caption = 'LPresent'
@@ -166,7 +168,7 @@ object Form1: TForm1
   end
   object LAbsent: TLabel
     Left = 65
-    Top = 98
+    Top = 88
     Width = 69
     Height = 24
     Caption = 'LAbsent'
@@ -179,35 +181,35 @@ object Form1: TForm1
   end
   object Label5: TLabel
     Left = 8
-    Top = 74
+    Top = 64
     Width = 42
     Height = 13
     Caption = 'Present: '
   end
   object Label6: TLabel
     Left = 8
-    Top = 106
+    Top = 96
     Width = 39
     Height = 13
     Caption = 'Absent: '
   end
   object Label3: TLabel
     Left = 179
-    Top = 44
+    Top = 34
     Width = 20
     Height = 13
     Caption = 'Last'
   end
   object Label4: TLabel
     Left = 65
-    Top = 44
+    Top = 34
     Width = 24
     Height = 13
     Caption = 'Total'
   end
   object LBusyL: TLabel
     Left = 179
-    Top = 130
+    Top = 120
     Width = 61
     Height = 24
     Caption = 'LBusyL'
@@ -220,7 +222,7 @@ object Form1: TForm1
   end
   object LIdleL: TLabel
     Left = 179
-    Top = 162
+    Top = 152
     Width = 50
     Height = 24
     Caption = 'LIdleL'
@@ -233,7 +235,7 @@ object Form1: TForm1
   end
   object lPresentL: TLabel
     Left = 179
-    Top = 66
+    Top = 56
     Width = 84
     Height = 24
     Caption = 'LPresentL'
@@ -246,7 +248,7 @@ object Form1: TForm1
   end
   object LAbsentL: TLabel
     Left = 179
-    Top = 98
+    Top = 88
     Width = 79
     Height = 24
     Caption = 'LAbsentL'
@@ -259,7 +261,7 @@ object Form1: TForm1
   end
   object LDateTime: TLabel
     Left = 65
-    Top = 10
+    Top = 0
     Width = 91
     Height = 24
     Caption = 'LDateTime'
@@ -272,14 +274,14 @@ object Form1: TForm1
   end
   object Label7: TLabel
     Left = 8
-    Top = 16
+    Top = 6
     Width = 55
     Height = 13
     Caption = 'Date Time: '
   end
   object EITO: TEdit
     Left = 8
-    Top = 44
+    Top = 34
     Width = 49
     Height = 21
     TabOrder = 0
@@ -289,8 +291,8 @@ object Form1: TForm1
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 193
-    Width = 304
+    Top = 191
+    Width = 302
     Height = 19
     Panels = <
       item
@@ -312,16 +314,17 @@ object Form1: TForm1
     ShowHint = True
     OnMouseDown = StatusBar1MouseDown
     OnMouseMove = StatusBar1MouseMove
+    ExplicitTop = 181
   end
   object Timer1: TTimer
     Interval = 1
     OnTimer = Timer1Timer
-    Left = 216
-    Top = 34
+    Left = 168
+    Top = 2
   end
   object ActionList1: TActionList
-    Left = 248
-    Top = 34
+    Left = 200
+    Top = 2
     object ShowInfo: TAction
       Caption = 'ShowInfo'
       OnExecute = ShowInfoExecute

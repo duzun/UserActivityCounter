@@ -6,8 +6,10 @@
 *.cfg  text  eol=crlf
 *.dfm  text  eol=crlf
 *.dpr  text  eol=crlf
-*.bat  text  eol=crlf
+*.dproj text  eol=crlf
 *.csv  text  eol=crlf
+*.bat  text  eol=crlf
+*.cmd  text  eol=crlf
 
 
 # Binary file extensions

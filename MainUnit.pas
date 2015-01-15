@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, Registry,
-  UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon;
+  UserAcReg, StdCtrls, ActnList, ComCtrls, ShellApi, TrayIcon, System.Actions;
 
 const csv_cell_sep = #09';';
       csv_ln_sep   = #13#10;
@@ -481,7 +481,7 @@ begin
     0:;
     1:;
     2:;
-    3: ShellExecute(Application.Handle, 'open', PAnsiChar(s), nil, nil, 1);
+    3: ShellExecute(Application.Handle, 'open', LPCTSTR(s), nil, nil, 1);
   end;
 end;
 
