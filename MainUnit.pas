@@ -34,7 +34,7 @@ type
     ShowFromTray: TAction;
     OnPresentChange: TAction;
     OnIdleChange: TAction;
-    OnStateChange: TAction;
+    OnPresenceChange: TAction;
     LBusyL: TLabel;
     LIdleL: TLabel;
     lPresentL: TLabel;
@@ -53,19 +53,21 @@ type
     procedure StatusBar1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure StatusBar1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure FormDestroy(Sender: TObject);
-    procedure OnPresentChangeExecute(Sender: TObject);
     procedure OnIdleChangeExecute(Sender: TObject);
-    procedure OnStateChangeExecute(Sender: TObject);
+    procedure OnPresenceChangeExecute(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure FormClick(Sender: TObject);
+    procedure OnPresentChangeExecute(Sender: TObject);
   protected
     procedure TrayMessage(var Msg: TMessage); message WM_ICONTRAY;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
   private
     { Private declarations }
     TrayIcon: TTrayIcon;
-
+    _csv_buf: string;
+    _csv_fn: TFileName;
+    usrnm: string;
     FormCaptStr: String;
     _Idle: Boolean;
     StartDate: TDateTime;
@@ -98,6 +100,49 @@ begin
    Result := Result + TimeToStr(d, FormatSettings);
 end;
 
+function FileAppend(fn:string; const buf:string): integer;
+var fh: integer;
+begin
+  Result := -1;
+  fh := FileOpen(fn, fmOpenReadWrite or fmShareDenyNone);
+  if fh <= 0 then fh := FileCreate(fn);
+  if fh <= 0 then Exit;
+  FileSeek(fh, 0, 2);
+  Result := FileWrite(fh, PAnsiChar(buf)^, length(buf));
+  FileClose(fh);
+end;
+
+function Report(fn:string; var buf: string; s: integer; t:DWord; a:DWord=0; tp:DWord=0; ta:DWord=0): boolean;
+var p: integer;
+    dt, tm: string;
+const ln = #13#10;
+
+begin
+  Result := false;
+  
+  // date ; came ; left ; present time ; busy time ; total present ; total absent
+  
+  tm := DateTimeToStr(Now);
+  p := pos(' ', tm);
+  dt := copy(tm, 1, p-1);
+  tm := copy(tm, p+1, length(tm));
+  
+  if s = 1 then begin // came
+     buf := buf + ln + dt + ';' + tm + ';';
+  end else
+  if s <= 0 then begin // left
+     buf := buf + tm + ';' + IntToStr(round(t/1000)) + ';' + IntToStr(round(a/1000)) + ';';
+     if s = -1 then begin // quit
+        buf := buf + IntToStr(round(tp/1000)) + ';' + IntToStr(round(ta/1000)) + ';' + ln;
+     end;
+  end;
+
+  if buf = '' then Exit;
+  
+  Result := FileAppend(fn, buf) >= 0;
+  
+  if Result then buf := '';
+end;
 
 procedure LoadCSVFile (FileName: String; separator: char);
 var f: TextFile;
@@ -151,6 +196,12 @@ begin
   TrayIcon.Hint := Caption;
   TrayIcon.OnMouseDown := TrayMouseDown;
 
+   usrnm := GetEnvironmentVariable('USERNAME');
+   _csv_buf := '';
+   _csv_fn := Application.ExeName;
+   _csv_fn := ExtractFilePath(_csv_fn) + usrnm + '_' + ChangeFileExt(ExtractFileName(_csv_fn), '.csv');
+   if not FileExists(_csv_fn) then FileAppend(_csv_fn, 'date;came;left;pres.;busy;t.pres.;t.busy');
+
    _toHide := ParamStr(1) = '/min';
 
    UAC := TUserActivityCounter.Create;
@@ -159,7 +210,7 @@ begin
    UAC.OnIdle := OnIdleChangeExecute;
    UAC.OnPresent := OnPresentChangeExecute;
    UAC.OnAbsent  := OnAbsentChangeExecute;
-   UAC.OnStateChange := OnStateChangeExecute;
+   UAC.OnPresentChange := OnPresenceChangeExecute;
 
    StartDate := Now;
 
@@ -172,29 +223,25 @@ end;
 
 procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
 var fn: string;
-    fh: integer;
-    buf: string;
 const ln = #13#10;
 begin
   UAC.Update;
 
+  Report(_csv_fn, _csv_buf, -1, UAC.PresentTimeLast, UAC.BusyTimeLast, UAC.PresentTime, UAC.BusyTime);  // Quit
+
   if (UAC.BusyTime < 1000) then Exit;
+
   fn := ChangeFileExt(Application.ExeName, '.log');
-  fh := FileOpen(fn, fmOpenReadWrite or fmShareDenyNone);
-  if fh <= 0 then fh := FileCreate(fn);
-  if fh <= 0 then Exit;
-  FileSeek(fh, 0, 2);
-  buf := ' - - -' + ln +
+
+  FileAppend(fn, 
+         ' - - -' + ln +
          '| ' + DateTimeToStr(StartDate) + ' |' + ln +
          'Present: ' + MSec2StrTime(UAC.PresentTime) + ln +
          'Absent : ' + MSec2StrTime(UAC.AbsentTime ) + ln +
          'Busy   : ' + MSec2StrTime(UAC.BusyTime) + ln +
          'Total  : ' + MSec2StrTime(UAC.TotalTime) + ln +
-         '| ' + DateTimeToStr(Now) + ' |' + ln ;
-
-  FileWrite(fh, PAnsiChar(buf)^, length(buf));
-
-  FileClose(fh);
+         '| ' + DateTimeToStr(Now) + ' |' + ln   
+  );
 
 end;
 
@@ -249,11 +296,6 @@ begin
     Self.Color := clMoneyGreen;
 end;
 
-procedure TForm1.OnPresentChangeExecute(Sender: TObject);
-begin
-   if _Idle then Exit;
-end;
-
 procedure TForm1.OnAbsentChangeExecute(Sender: TObject);
 begin
     Self.Color := clYellow;
@@ -268,9 +310,9 @@ begin
     LPresent.Caption   := MSec2StrTime(UAC.PresentTime);
     LAbsent.Caption    := MSec2StrTime(UAC.AbsentTime);
 
-    LBusyL.Caption      := MSec2StrTime(UAC.BusyTimeLast);
+    LBusyL.Caption      := MSec2StrTime(UAC.BusyTimeLast(true));
     LIdleL.Caption      := MSec2StrTime(UAC.IdleTimeLast);
-    LPresentL.Caption   := MSec2StrTime(UAC.PresentTimeLast);
+    LPresentL.Caption   := MSec2StrTime(UAC.PresentTimeLast(true));
     LAbsentL.Caption    := MSec2StrTime(UAC.AbsentTimeLast);
 
    if not UAC.Present then begin
@@ -390,22 +432,21 @@ begin
 
 end;
 
-procedure TForm1.OnStateChangeExecute(Sender: TObject);
+procedure TForm1.OnPresenceChangeExecute(Sender: TObject);
 begin
-{
-    case UAC.State of
-       0:;
-       1:;
-       2:;
-       else
-    end;
-}
+    if UAC.Present then Report(_csv_fn, _csv_buf, 1, UAC.AbsentTimeLast)
+                   else Report(_csv_fn, _csv_buf, 0, UAC.PresentTimeLast, UAC.BusyTimeLast);
 end;
 
 
 procedure TForm1.FormClick(Sender: TObject);
 begin
    EITO.Visible := false;
+end;
+
+procedure TForm1.OnPresentChangeExecute(Sender: TObject);
+begin
+  if true then ;
 end;
 
 end.

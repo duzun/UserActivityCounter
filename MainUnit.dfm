@@ -319,9 +319,9 @@ object Form1: TForm1
       Caption = 'ShowInfo'
       OnExecute = ShowInfoExecute
     end
-    object OnStateChange: TAction
-      Caption = 'OnStateChange'
-      OnExecute = OnStateChangeExecute
+    object OnPresenceChange: TAction
+      Caption = 'OnPresenceChange'
+      OnExecute = OnPresenceChangeExecute
     end
     object OnPresentChange: TAction
       Caption = 'OnPresentChange'
