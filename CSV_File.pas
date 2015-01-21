@@ -1,3 +1,8 @@
+{***********************************************
+    Note: This file is not used in the project.
+
+ ***********************************************}
+
 procedure LoadCSVFile (FileName: String; separator: char);
 var f: TextFile;
     s1, s2: string;

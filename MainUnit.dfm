@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 1519
-  Top = 274
+  Left = 797
+  Top = 230
   Width = 318
   Height = 249
   AutoSize = True
@@ -314,6 +314,16 @@ object Form1: TForm1
     ShowHint = True
     OnMouseDown = StatusBar1MouseDown
     OnMouseMove = StatusBar1MouseMove
+  end
+  object PauseBtn: TButton
+    Left = 251
+    Top = 167
+    Width = 45
+    Height = 19
+    Caption = 'Pause'
+    TabOrder = 2
+    TabStop = False
+    OnClick = PauseBtnClick
   end
   object Timer1: TTimer
     Interval = 1

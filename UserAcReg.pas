@@ -5,13 +5,14 @@ uses Windows, SysUtils, Classes;
 
 function GetLastInputTick: DWord; // TickCount at the moment of last input
 function GetUnixTime: Int64;
+function MSec2StrTime(msec: ULong): string;
 
 type TUserActivityCounter = class(TObject)
   private
      {
-       Time is an elapsed amount, but Tick is a point in time.
+       Time is an elapsed amount
+       Tick is a point in time
      }
-
      FBusyTime   : DWord;    // Acumulated Busy Time
      FPresentTime: DWord;    // Acumulated Present Time
 
@@ -25,13 +26,15 @@ type TUserActivityCounter = class(TObject)
 
      FBusy       : boolean;  // Busy state
      FPresent    : boolean;  // Present state
-
-    procedure SetAbsentTimeout(const Value: DWord);
-    procedure SetIdleTimeout(const Value: DWord);
+     FPaused     : boolean;  // Paused state
 
   protected
      FIdleTO     : DWord;    // Idle timeout
      FAbsentTO   : DWord;    // Absent timeout
+
+     procedure SetAbsentTimeout(const Value: DWord);
+     procedure SetIdleTimeout(const Value: DWord);
+     procedure SetPausedState(const Value: Boolean);
 
   public
      OnStateChange  : TNotifyEvent; // Called when get busy or idle
@@ -73,7 +76,21 @@ type TUserActivityCounter = class(TObject)
 
      function Present: boolean;   // Presence state
      function Busy   : boolean;   // Busy state
-     function State  : Integer;   // 0 - Absent, 1 - Present and Idle, 2 - Busy (and Present)
+     property Paused : boolean read FPaused   write SetPausedState;   // Paused state
+     function State  : Integer;   // -1 - Paused, 0 - Absent, 1 - Present and Idle, 2 - Busy (and Present)
+
+     // String versions of some methods
+     function TotalTimeStr  : String; // Total elapsed time since started monitoring
+     function IdleTimeStr   : String; // Amount of Idle    time (msec.)
+     function BusyTimeStr   : String; // Amount of Busy    time
+     function AbsentTimeStr : String; // Amount of Absent  time
+     function PresentTimeStr: String; // Amount of Present time
+
+     function IdleTimeLastStr   : String;                       // Amount of time of last idle    session
+     function BusyTimeLastStr(Potent:boolean=false)   : String; // Amount of time of last busy    session
+     function AbsentTimeLastStr : String;                       // Amount of time of last absent  session
+     function PresentTimeLastStr(Potent:boolean=false): String; // Amount of time of last present session
+
 
 end;
 
@@ -82,7 +99,7 @@ var FormatSettings: TFormatSettings;
 
 implementation
 
-uses DateUtils;
+uses DateUtils, Math;
 var liInfo: TLastInputInfo;
 
 function GetLastInputTick: DWord;
@@ -100,19 +117,30 @@ function GetUnixTime: Int64; begin Result := DateTimeToUnix(Date+Time); end;
 function min(a,b:DWord):DWord;begin if a < b then Result := a else Result := b end;
 function max(a,b:DWord):DWord;begin if a < b then Result := b else Result := a end;
 
+
+function MSec2StrTime(msec: ULong): string;
+var d: TDateTime;
+begin
+   d := msec / MSecsPerDay;
+   Result := '';
+   if d >= 1 then Result := IntToStr(Floor(d)) + '-';
+   Result := Result + TimeToStr(d, FormatSettings);
+end;
+
+
 { TUserActivityCounter }
 
 constructor TUserActivityCounter.Create;
 var i: DWord;
 begin
   inherited Create;
-  
+
   i := i xor i;
   FIdleTO      := 128;
   FAbsentTO    := i;
 
   Self.Reset;
-  
+
   // ??? should reset?
   FLITick      := i;
   FLastTick    := i;
@@ -142,7 +170,7 @@ begin
   FLastTick    := i;
   FStartTick   := i;
 
-  // Need reset:
+  // must reset:
   FBusyTime    := i;
   FPresentTime := i;
 
@@ -153,18 +181,24 @@ begin
 
   FBusy    := false;
   FPresent := false;
+  FPaused  := false;
 end;
 
-function TUserActivityCounter.Update: boolean; // @return state shanged since last run
+/// @return TRUE if state shanged since last call
+function TUserActivityCounter.Update: boolean;
 var tk, li: DWord;
     cp, cb: boolean;
     first: boolean;
 begin
-  li := GetLastInputTick; // = 0 on error or no input at all
+  if FPaused then begin
+    li := FLITick;
+  end else begin
+    li := GetLastInputTick; // = 0 on error or no input at all
+  end;
   tk := GetTickCount;
-  
-  cb := tk < li + FIdleTO;
-  cp := tk < li + FAbsentTO; // computed presence
+
+  cb := tk < li + FIdleTO;   // computed busy state
+  cp := tk < li + FAbsentTO; // computed presence state
 
   first := FStartTick = 0;
   if first then begin
@@ -176,13 +210,13 @@ begin
       end;
       FBusy    := cb;
       FPresent := cp;
-      
+
       FBChangeTick := FStartTick;
       FIChangeTick := FStartTick;
       FPChangeTick := FStartTick;
       FAChangeTick := FStartTick;
   end;
-  
+
   if FLastTick < li then begin  // new input
      if li <= FLITick + FIdleTO then begin
         inc(FBusyTime, li-FLITick);
@@ -204,12 +238,14 @@ begin
 
   if cb then begin
      FBusy := not FBusy;
-     if FBusy then FBChangeTick := li else FIChangeTick := li;
+     if FBusy then FBChangeTick := li
+              else FIChangeTick := li;
   end;
 
   if cp then begin
      FPresent := not FPresent;
-     if FPresent then FPChangeTick := li else FAChangeTick := li;
+     if FPresent then FPChangeTick := li
+                 else FAChangeTick := li;
   end;
 
   if cb then BusyChanged;
@@ -250,7 +286,7 @@ end;
 
 function TUserActivityCounter.AbsentTimeLast: DWord;
 begin
-   if FPresent then Result := FPChangeTick 
+   if FPresent then Result := FPChangeTick
                else Result := GetTickCount;
    dec(Result, FAChangeTick);
 end;
@@ -264,7 +300,7 @@ end;
 
 function TUserActivityCounter.IdleTimeLast: DWord;
 begin
-   if FBusy then Result := FBChangeTick 
+   if FBusy then Result := FBChangeTick
             else Result := GetTickCount;
    dec(Result, FIChangeTick);
 end;
@@ -292,16 +328,41 @@ end;
 function TUserActivityCounter.State: Integer;
 begin
   Result := Result xor Result;
+  dec(Result, Integer(FPaused));
+  if FPaused then exit;
   inc(Result, Integer(FPresent));
   inc(Result, Integer(FBusy));
 end;
 
 function TUserActivityCounter.Busy: boolean;    begin Result := boolean(FBusy);    end;
 function TUserActivityCounter.Present: boolean; begin Result := boolean(FPresent); end;
-
+procedure TUserActivityCounter.SetPausedState(const Value: Boolean);   begin FPaused   := Value; end;
 
 procedure TUserActivityCounter.SetAbsentTimeout(const Value: DWord); begin FAbsentTO := Value; end;
-procedure TUserActivityCounter.SetIdleTimeout(const Value: DWord); begin FIdleTO := Value; end;
+procedure TUserActivityCounter.SetIdleTimeout(const Value: DWord);   begin FIdleTO   := Value; end;
+
+
+function TUserActivityCounter.TotalTimeStr  : String;
+begin Result := MSec2StrTime(self.TotalTime); end;
+function TUserActivityCounter.IdleTimeStr   : String;
+begin Result := MSec2StrTime(self.IdleTime); end;
+function TUserActivityCounter.BusyTimeStr   : String;
+begin Result := MSec2StrTime(self.BusyTime); end;
+function TUserActivityCounter.AbsentTimeStr : String;
+begin Result := MSec2StrTime(self.AbsentTime); end;
+function TUserActivityCounter.PresentTimeStr: String;
+begin Result := MSec2StrTime(self.PresentTime); end;
+
+function TUserActivityCounter.IdleTimeLastStr   : String;
+begin Result := MSec2StrTime(self.IdleTimeLast); end;
+function TUserActivityCounter.BusyTimeLastStr(Potent:boolean=false)   : String;
+begin Result := MSec2StrTime(self.BusyTimeLast(Potent)); end;
+function TUserActivityCounter.AbsentTimeLastStr : String;
+begin Result := MSec2StrTime(self.AbsentTimeLast); end;
+function TUserActivityCounter.PresentTimeLastStr(Potent:boolean=false): String;
+begin Result := MSec2StrTime(self.PresentTimeLast(Potent)); end;
+
+
 
 initialization
   liInfo.cbSize := SizeOf(TLastInputInfo) ;
@@ -309,10 +370,10 @@ initialization
   {Setarile implicite pentru formatarea numerelor reale}
   GetLocaleFormatSettings(0, FormatSettings);
   FormatSettings.DecimalSeparator := '.';  {Indiferent de setarile din sistem, separatorul zecimal va fi '.'}
-  FormatSettings.ShortTimeFormat := 'mm:ss';
-  FormatSettings.LongTimeFormat := 'hh:mm:ss';
+  FormatSettings.ShortTimeFormat  := 'mm:ss';
+  FormatSettings.LongTimeFormat   := 'hh:mm:ss';
 
-  FormatSettings.ShortDateFormat := 'dd.MM.yyyy';
-  FormatSettings.DateSeparator := '.';
+  FormatSettings.ShortDateFormat  := 'dd.MM.yyyy';
+  FormatSettings.DateSeparator    := '.';
 
 end.
