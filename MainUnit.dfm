@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 797
-  Top = 230
+  Left = 802
+  Top = 234
   Width = 318
   Height = 249
   AutoSize = True
@@ -324,6 +324,7 @@ object Form1: TForm1
     TabOrder = 2
     TabStop = False
     OnClick = PauseBtnClick
+    OnKeyDown = FormKeyDown
   end
   object Timer1: TTimer
     Interval = 1
