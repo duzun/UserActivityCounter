@@ -1,6 +1,7 @@
 # User Activity Counter
 Tracks your activity and presence time while working at your PC.
 
+![ss2015-05-20](https://raw.githubusercontent.com/duzun/UserActivityCounter/master/dist/ss2015-05-20.png)
 
 # Installation
 
