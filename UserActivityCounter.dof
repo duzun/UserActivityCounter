@@ -105,35 +105,31 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
-[Language]
-ActiveLang=
-ProjectLang=
-RootDir=
 [Version Info]
-IncludeVerInfo=0
-AutoIncBuild=0
+IncludeVerInfo=1
+AutoIncBuild=1
 MajorVer=1
-MinorVer=0
+MinorVer=1
 Release=0
-Build=0
+Build=18
 Debug=0
 PreRelease=0
 Special=0
 Private=0
 DLL=0
-Locale=1048
-CodePage=1250
+Locale=1118
+CodePage=0
 [Version Info Keys]
-CompanyName=
+CompanyName=DUzun.Me
 FileDescription=
-FileVersion=1.0.0.0
+FileVersion=1.1.0.18
 InternalName=
 LegalCopyright=
 LegalTrademarks=
-OriginalFilename=
-ProductName=
+OriginalFilename=UserActivityCounter.exe
+ProductName=User Activity Counter
 ProductVersion=1.0.0.0
-Comments=
-[Excluded Packages]
-c:\progs\borland\delphi7\Bin\DBWEBXPRT.BPL=Borland Web Wizard Package
-C:\Progs\Synactis\PDF In-The-Box for Delphi\Delphi 7\Pdf_InTheBox.bpl=Synactis PDF In-The-Box for Delphi version 4.03
+Comments=Tracks your activity and presence time while working at your PC
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

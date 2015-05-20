@@ -1,5 +1,10 @@
 unit UserAcReg;
 
+{
+    @author  Dumitru Uzun (DUzun.Me)
+    @version 1.1.0
+}
+
 interface
 uses Windows, SysUtils, Classes;
 
@@ -13,8 +18,8 @@ type TUserActivityCounter = class(TObject)
        Time is an elapsed amount
        Tick is a point in time
      }
-     FBusyTime   : DWord;    // Acumulated Busy Time
-     FPresentTime: DWord;    // Acumulated Present Time
+     FBusyTime   : DWord;    // Accumulated Busy Time
+     FPresentTime: DWord;    // Accumulated Present Time
 
      FStartTick  : DWord;    // Tick Count at which started counting
      FLastTick   : DWord;    // Last Registered Tick
@@ -29,8 +34,8 @@ type TUserActivityCounter = class(TObject)
      FPaused     : boolean;  // Paused state
 
   protected
-     FIdleTO     : DWord;    // Idle timeout
-     FAbsentTO   : DWord;    // Absent timeout
+     FIdleTO     : DWord;    // Idle time-out
+     FAbsentTO   : DWord;    // Absent time-out
 
      procedure SetAbsentTimeout(const Value: DWord);
      procedure SetIdleTimeout(const Value: DWord);
@@ -49,7 +54,7 @@ type TUserActivityCounter = class(TObject)
      constructor Create;
      destructor  Destroy; override;
 
-     function    Update: boolean;   // Call this method as often as posible to monitore state changes
+     function    Update: boolean;   // Call this method as often as possible to monitor state changes
 
      procedure BusyChanged(Sender: TObject=nil);
      procedure PresentChanged(Sender: TObject=nil);
@@ -184,7 +189,7 @@ begin
   FPaused  := false;
 end;
 
-/// @return TRUE if state shanged since last call
+/// @return TRUE if state changed since last call
 function TUserActivityCounter.Update: boolean;
 var tk, li: DWord;
     cp, cb: boolean;

@@ -1,5 +1,10 @@
 unit MainUnit;
 
+{
+    @author  Dumitru Uzun (DUzun.Me)
+    @version 1.0.1
+}
+
 interface
 
 uses
@@ -113,7 +118,7 @@ end;
 type TUAC_Report = (ur_none, ur_came, ur_left, ur_last);
 var last_report: Tuac_report;
 
-function Report(fn:string; var buf: string; report: Tuac_report; uac: TUserActivityCounter): boolean;
+function Report(fn:string; var buf: string; uac_report: TUAC_Report; UAC: TUserActivityCounter): boolean;
       var dt, tm: string;
 
       function mktm(n:TDateTime): string;
@@ -133,10 +138,14 @@ begin
   UAC.Update;
 
   // date ; came ; left ; present ; absent ; total present ; total absent ; busy ; down
-  if report <> last_report then begin
-      if report = ur_came then begin // came
+
+  // UAC state changed
+  if uac_report <> last_report then begin
+      // came
+      if uac_report = ur_came then begin
          if last_report = ur_left then begin
             add_cell(UAC.AbsentTimeLast);
+            buf := buf + csv_cell_sep + csv_cell_sep + csv_cell_sep + csv_cell_sep;
          end;
          buf := buf + csv_ln_sep;
          // mktm(Now);
@@ -144,13 +153,15 @@ begin
          add_cell(dt);
          add_cell(tm);
       end else
-      if report >= ur_left then begin // left
+      // left
+      if uac_report >= ur_left then begin
          if last_report < ur_left then begin
             mktm(Now - UAC.IdleTimeLast / MSecsPerDay);
             add_cell(tm);
             add_cell(UAC.PresentTimeLast);
          end;
-         if report = ur_last then begin // quit
+         // quit
+         if uac_report = ur_last then begin
             mktm(Now);
             add_cell(UAC.AbsentTimeLast);
             add_cell(UAC.PresentTime);
@@ -160,7 +171,7 @@ begin
             buf := buf + csv_ln_sep;
          end;
       end;
-      last_report := report;
+      last_report := uac_report;
   end;
 
   if buf = '' then Exit;
@@ -356,7 +367,7 @@ begin
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
-var i:dword;
+var i: dword;
     schg: boolean;
 begin
    if UAC = nil then Exit;
@@ -404,17 +415,17 @@ procedure TForm1.ShowInfoExecute(Sender: TObject);
 var statestr: string;
     i: DWORD;
 begin
-    LBusy.Caption       := UAC.BusyTimeStr;
-    LIdle.Caption       := UAC.IdleTimeStr;
-    LPresent.Caption    := UAC.PresentTimeStr;
-    LAbsent.Caption     := UAC.AbsentTimeStr;
+    LBusy.Caption     := UAC.BusyTimeStr;
+    LIdle.Caption     := UAC.IdleTimeStr;
+    LPresent.Caption  := UAC.PresentTimeStr;
+    LAbsent.Caption   := UAC.AbsentTimeStr;
 
-    LBusyL.Caption      := UAC.BusyTimeLastStr(true);
-    LIdleL.Caption      := UAC.IdleTimeLastStr;
-    LPresentL.Caption   := UAC.PresentTimeLastStr(true);
-    LAbsentL.Caption    := UAC.AbsentTimeLastStr;
+    LBusyL.Caption    := UAC.BusyTimeLastStr(true);
+    LIdleL.Caption    := UAC.IdleTimeLastStr;
+    LPresentL.Caption := UAC.PresentTimeLastStr(true);
+    LAbsentL.Caption  := UAC.AbsentTimeLastStr;
 
-    LDateTime.Caption   := DateTimeToStr(Now, FormatSettings);
+    LDateTime.Caption := DateTimeToStr(Now, FormatSettings);
 
    if not UAC.Present then begin
       statestr := 'Absent';

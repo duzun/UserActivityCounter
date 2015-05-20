@@ -10,6 +10,7 @@ uses
 begin
   Application.Initialize;
 //  Application.ShowMainForm := False;
+  Application.Title := 'User Activity Counter';
   Application.CreateForm(TForm1, Form1);
   Application.Run;
 end.
